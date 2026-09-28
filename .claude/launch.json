@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "campo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/servidor.mjs", "8080"],
+      "port": 8080
+    }
+  ]
+}

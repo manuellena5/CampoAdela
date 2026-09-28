@@ -1,0 +1,30 @@
+# Campo Adela
+
+PWA para registrar gastos e ingresos del campo familiar (20 ha en Landeta, Santa Fe).
+La especificación completa está en [prompt-claude-code-app-campo.md](prompt-claude-code-app-campo.md).
+
+Sin build step: HTML + CSS + JavaScript (ES modules). Se publica tal cual en GitHub Pages.
+
+## Desarrollo local
+
+```bash
+node tools/servidor.mjs
+```
+
+Abrir http://localhost:8080. El Service Worker cachea todo: para ver cambios sin cambiar
+la versión, en DevTools → Application → Service Workers marcar **Update on reload**
+(o usar una ventana de incógnito).
+
+## Publicar una versión nueva
+
+1. Subir la versión en `version.json` **y** en `js/config.js` (`APP_VERSION`), con el mismo valor.
+2. Si se agregaron archivos, sumarlos a `ASSETS` en `sw.js`.
+3. Agregar la entrada en `CHANGELOG.md`.
+4. Push a `main` (GitHub Pages publica desde la raíz).
+
+Los usuarios con la app abierta ven el banner **"Nueva versión disponible — Actualizar"**.
+Actualizar nunca borra los datos locales (IndexedDB).
+
+## Íconos
+
+`powershell -ExecutionPolicy Bypass -File tools/generar-iconos.ps1` regenera los PNG de `/icons`.
