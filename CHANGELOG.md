@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 — 2026-09-28 — Navegación y orden
+- Botón "atrás": desde cualquier pantalla secundaria vuelve a la pantalla principal desde la que se llegó
+  (Movimientos, Nuevo, Campañas o Más), sin acumular historial. En una principal, el primer "atrás"
+  avisa "Tocá atrás otra vez para salir" y el segundo sale de la app. Con un diálogo abierto, lo cierra.
+- Listado de movimientos: ordenar tocando el encabezado Fecha o Monto (↓/↑). En el celular, botones
+  "Ordenar: Fecha / Monto". El orden se conserva al volver de la edición y se respeta al exportar CSV.
+- Campañas: tocar una campaña abre su Resumen; el ✏️ abre la edición.
+
 ## 0.7.3 — 2026-09-28 — Actualización que quedaba trabada
 - El Service Worker descarga cada archivo con `?v=VERSIÓN`: la CDN de GitHub Pages (que cachea hasta
   10 minutos) no puede entregar copias viejas. Antes, actualizar justo después de publicar podía

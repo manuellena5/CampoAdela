@@ -6,9 +6,11 @@ import { PAGO_CAJA } from '../dominio.js';
 import { esc, $, toast } from '../lib/dom.js';
 import { formatoARS, formatoUSD, formatoFecha, formatoNumero, hoyISO } from '../lib/formato.js';
 import { generarCSV, descargarCSV, numeroCSV } from '../lib/csv.js';
+import { navegar } from '../router.js';
 
-// Filtros de la sesión (se conservan al ir y volver de la edición).
+// Filtros y orden de la sesión (se conservan al ir y volver de la edición).
 const filtros = { campana: '', categoria: '', periodo: '', pago: '' };
+const orden = { campo: 'fecha', desc: true };
 const TODAS = '';
 const SIN_CAMPANA = '__sin__';
 
@@ -29,8 +31,6 @@ export async function render(el) {
   const camp = porId(campanas);
   const herm = porId(hermanos);
   const nombrePago = (id) => (id === PAGO_CAJA || !id ? 'Caja común' : herm[id]?.nombre || '¿?');
-
-  movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado));
 
   // Opciones de filtros
   const periodos = [...new Set(movimientos.map((m) => m.periodo).filter(Boolean))].sort().reverse();
@@ -92,11 +92,20 @@ export async function render(el) {
 
     <div id="resultado"></div>`;
 
+  // Orden: por fecha (desempata la carga) o por monto (en la moneda de la vista).
+  const comparar = (a, b) => {
+    const campoMonto = vista === 'USD' ? 'montoUSD' : 'montoARS';
+    const r = orden.campo === 'monto'
+      ? (a[campoMonto] || 0) - (b[campoMonto] || 0)
+      : a.fecha.localeCompare(b.fecha) || a.creado.localeCompare(b.creado);
+    return orden.desc ? -r : r;
+  };
+
   const filtrados = () => movimientos.filter((m) =>
     (!filtros.campana || (filtros.campana === SIN_CAMPANA ? !m.campanaId : m.campanaId === filtros.campana))
     && (!filtros.categoria || m.categoriaId === filtros.categoria)
     && (!filtros.periodo || m.periodo === filtros.periodo)
-    && (!filtros.pago || (m.pagoId || PAGO_CAJA) === filtros.pago));
+    && (!filtros.pago || (m.pagoId || PAGO_CAJA) === filtros.pago)).sort(comparar);
 
   const dibujar = () => {
     const lista = filtrados();
@@ -122,6 +131,14 @@ export async function render(el) {
       toast(`${lista.length} movimiento${lista.length === 1 ? '' : 's'} exportado${lista.length === 1 ? '' : 's'}`);
       return;
     }
+    const btnOrden = e.target.closest('[data-orden]');
+    if (btnOrden) {
+      const campo = btnOrden.dataset.orden;
+      // Mismo campo: invierte. Campo nuevo: empieza por lo más reciente / lo más grande.
+      Object.assign(orden, orden.campo === campo ? { desc: !orden.desc } : { campo, desc: true });
+      dibujar();
+      return;
+    }
     if (e.target.closest('#limpiar-filtros')) {
       Object.keys(filtros).forEach((k) => { filtros[k] = TODAS; });
       render(el);
@@ -140,11 +157,13 @@ export async function render(el) {
     }
     if (e.target.closest('a.clip')) return; // abre el comprobante, no la edición
     const fila = e.target.closest('[data-id]');
-    if (fila) location.hash = `#/movimientos/${fila.dataset.id}`;
+    if (fila) navegar(`/movimientos/${fila.dataset.id}`);
   };
   el.onkeydown = (e) => {
     const fila = e.key === 'Enter' && e.target.closest('[data-id]');
-    if (fila && e.target === fila) location.hash = `#/movimientos/${fila.dataset.id}`;
+    if (fila && e.target === fila) navegar(`/movimientos/${fila.dataset.id}`);
+    const btnOrden = e.key === 'Enter' && e.target.closest('th[data-orden]');
+    if (btnOrden) btnOrden.click();
   };
 
   dibujar();
@@ -204,7 +223,26 @@ function totalesHTML(lista, cat, vista) {
       ${celda('Neto', filas.map((t) => t.f(t.neto)), filas[0].neto < 0 ? 'gasto' : 'ingreso')}
       ${celda('Por hermano (⅓)', filas.map((t) => t.f(t.neto / 3)), filas[0].neto < 0 ? 'gasto' : 'ingreso')}
     </div>
-    <div class="ayuda contador">${lista.length} movimiento${lista.length === 1 ? '' : 's'}</div>`;
+    <div class="contador">
+      <span class="ayuda">${lista.length} movimiento${lista.length === 1 ? '' : 's'}</span>
+      ${lista.length > 1 ? `<span class="orden-celular solo-celular">Ordenar:
+        ${botonOrden('fecha', 'Fecha')} ${botonOrden('monto', 'Monto')}</span>` : ''}
+    </div>`;
+}
+
+// ---- Orden
+
+const flecha = (campo) => (orden.campo === campo ? (orden.desc ? ' ↓' : ' ↑') : '');
+const ariaOrden = (campo) => (orden.campo === campo ? (orden.desc ? 'descending' : 'ascending') : 'none');
+
+// Botón de orden para el celular (no hay encabezados de tabla).
+function botonOrden(campo, texto) {
+  return `<button type="button" class="btn-link ${orden.campo === campo ? 'orden-activo' : ''}" data-orden="${campo}">${texto}${flecha(campo)}</button>`;
+}
+
+// Encabezado de tabla ordenable.
+function thOrden(campo, texto, clase = '') {
+  return `<th class="ordenable ${clase}" data-orden="${campo}" tabindex="0" aria-sort="${ariaOrden(campo)}" title="Ordenar por ${texto.toLowerCase()}">${texto}<span class="flecha">${flecha(campo) || ' ↕'}</span></th>`;
 }
 
 // ---- Lista (tabla + tarjetas)
@@ -239,8 +277,8 @@ function listaHTML(lista, { cat, sub, camp, nombrePago, vista }) {
       <table class="tabla">
         <thead>
           <tr>
-            <th>Fecha</th><th>Categoría</th><th>Detalle</th><th>Campaña</th><th>Pagó</th>
-            <th class="num">${encabezadoMonto}</th><th class="num">TC</th><th></th>
+            ${thOrden('fecha', 'Fecha')}<th>Categoría</th><th>Detalle</th><th>Campaña</th><th>Pagó</th>
+            ${thOrden('monto', encabezadoMonto, 'num')}<th class="num">TC</th><th></th>
           </tr>
         </thead>
         <tbody>

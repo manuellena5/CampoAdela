@@ -585,7 +585,14 @@ a.item-boton .detalle { display: block; }
 .total-valor { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .total.gasto .total-valor { color: var(--gasto); }
 .total.ingreso .total-valor { color: var(--ingreso); }
-.contador { margin: 8px 0 12px; }
+.contador { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 12px; }
+.orden-celular { font-size: .85rem; color: var(--texto-suave); }
+.orden-celular .btn-link { padding: 6px 4px; }
+.orden-activo { text-decoration: underline; }
+.tabla th.ordenable { cursor: pointer; user-select: none; }
+.tabla th.ordenable:hover { color: var(--verde); }
+.tabla th .flecha { font-weight: 400; }
+.tabla th[aria-sort="none"] .flecha { opacity: .4; }
 
 /* La moneda en que se cargó va en negrita; la convertida, más liviana. */
 .monto.original { font-weight: 700; }

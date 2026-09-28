@@ -5,6 +5,7 @@ import { HECTAREAS_DEFAULT } from '../config.js';
 import { abrirDialogo } from '../lib/dialogo.js';
 import { esc, toast } from '../lib/dom.js';
 import { formatoFecha, formatoNumero, parsearMonto } from '../lib/formato.js';
+import { navegar } from '../router.js';
 
 const ESTADOS = ['planificada', 'en curso', 'cerrada'];
 
@@ -31,25 +32,37 @@ export async function render(el) {
       ${campanas.map((c) => {
         const sup = superpuestas(c, campanas);
         return `
-          <button type="button" class="tarjeta tarjeta-boton" data-accion="editar" data-id="${esc(c.id)}">
+          <div class="tarjeta tarjeta-boton" role="button" tabindex="0" data-accion="resumen" data-id="${esc(c.id)}"
+            title="Ver el resumen de la campaña">
             <div class="item-fila">
               <strong>${esc(c.nombre)}</strong>
-              <span class="badge estado-${c.estado.replace(' ', '-')}">${esc(c.estado)}</span>
+              <span class="item-acciones">
+                <span class="badge estado-${c.estado.replace(' ', '-')}">${esc(c.estado)}</span>
+                <button type="button" class="btn-icono" data-accion="editar" data-id="${esc(c.id)}"
+                  aria-label="Editar ${esc(c.nombre)}" title="Editar campaña">✏️</button>
+              </span>
             </div>
             <div class="detalle">
               ${[c.cultivo, c.hectareas ? `${formatoNumero(c.hectareas)} ha` : ''].filter(Boolean).map(esc).join(' · ')}
             </div>
             <div class="detalle">${rangoFechas(c)}</div>
             ${sup.length ? `<div class="aviso-chico">Se superpone con ${sup.map((s) => esc(s.nombre)).join(', ')}</div>` : ''}
-          </button>`;
+          </div>`;
       }).join('')}
     </div>`;
 
-  el.onclick = async (e) => {
-    const btn = e.target.closest('[data-accion]');
-    if (!btn) return;
+  // closest() toma el elemento más cercano: el ✏️ (editar) gana sobre la tarjeta (resumen).
+  const accionar = async (btn) => {
     const campana = campanas.find((c) => c.id === btn.dataset.id);
+    if (btn.dataset.accion === 'resumen') { navegar(`/resumen/${campana.id}`); return; }
     if (await editar(campana, campanas)) render(el);
+  };
+  el.onclick = (e) => {
+    const btn = e.target.closest('[data-accion]');
+    if (btn) accionar(btn);
+  };
+  el.onkeydown = (e) => {
+    if (e.key === 'Enter' && e.target.matches('.tarjeta-boton[data-accion]')) accionar(e.target);
   };
 }
 
