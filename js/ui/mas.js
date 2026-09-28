@@ -4,6 +4,10 @@ export async function render(el) {
   el.innerHTML = `
     <h1>Más</h1>
     <ul class="tarjeta lista-enlaces" style="padding:0">
+      <li><a href="#/resumen">Resumen de campaña</a></li>
+      <li><a href="#/cuentas">Cuentas entre hermanos</a></li>
+    </ul>
+    <ul class="tarjeta lista-enlaces" style="padding:0">
       <li><a href="#/categorias">Categorías</a></li>
       <li><a href="#/hermanos">Hermanos</a></li>
       <li><a href="#/configuracion">Configuración</a></li>

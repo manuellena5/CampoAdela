@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — 2026-09-28 — Fase 6: resumen de campaña y cuentas entre hermanos
+- Resumen de campaña: gastos total y por ha (ARS/USD) por categoría y subcategoría con %, ingresos
+  (kg, qq, $, precio promedio por qq), margen bruto total y por ha, rinde qq/ha y ⅓ del margen por hermano.
+  Los gastos sin campaña no entran en el margen.
+- Cuentas entre hermanos (todos los movimientos, incluidos los sin campaña): lo que pagó cada uno
+  (propio + ⅓ de la Caja común) contra lo que le corresponde, ingresos cobrados a nombre propio,
+  saldo y sugerencia de transferencias para quedar a mano.
+- Navegación: "Resumen" y "Cuentas" en la barra lateral (notebook) y en "Más" (celular).
+- `js/calculos.js` con los cálculos como funciones puras.
+
 ## 0.5.0 — 2026-09-28 — Fase 5: listado y vistas
 - Listado con filtros por campaña (Todas / Sin campaña / cada una), categoría, mes y quién pagó.
   Los filtros se conservan durante la sesión; "Limpiar filtros".

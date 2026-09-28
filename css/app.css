@@ -626,6 +626,52 @@ a.item-boton .detalle { display: block; }
 .tabla .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .detalle-celda { color: var(--texto-suave); max-width: 280px; }
 
+/* ===== Resumen y cuentas ===== */
+.filtros-grid-2 { grid-template-columns: 1fr; align-items: end; }
+.filtros-vista { align-self: end; }
+.totales-ha { margin-top: 8px; }
+.totales + .ayuda { margin-top: 8px; }
+.total .monto { font-size: 1.05rem; }
+.total.gasto .monto { color: var(--gasto); }
+.total.ingreso .monto { color: var(--ingreso); }
+
+.tabla-resumen .fila-categoria td { font-weight: 600; }
+.tabla-resumen .fila-sub td { color: var(--texto-suave); font-size: .88rem; }
+.tabla-resumen .fila-sub td:first-child { padding-left: 28px; }
+.tabla-resumen tbody tr, .tabla-cuentas tbody tr { cursor: default; }
+.tabla-resumen tbody tr:hover, .tabla-cuentas tbody tr:hover { background: none; }
+.tabla .fila-total td { font-weight: 700; border-top: 2px solid var(--borde); }
+
+.saldo { font-weight: 700; }
+.saldo.ingreso { color: var(--ingreso); }
+.saldo.gasto { color: var(--gasto); }
+.saldo-texto { font-size: .75rem; font-weight: 500; color: var(--texto-suave); }
+.transferencias { margin: 8px 0 0; padding-left: 20px; }
+.transferencias li { margin: 4px 0; }
+
+/* Cuentas en celular: cada hermano como tarjeta con etiquetas */
+@media (max-width: 899px) {
+  .tabla-cuentas { background: none; border: 0; }
+  .tabla-cuentas thead { display: none; }
+  .tabla-cuentas table, .tabla-cuentas tbody, .tabla-cuentas tr, .tabla-cuentas td { display: block; }
+  .tabla-cuentas tr {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    margin-bottom: 8px;
+    padding: 8px 4px;
+  }
+  .tabla-cuentas td { border: 0; padding: 4px 12px; }
+  .tabla-cuentas td.num { display: flex; justify-content: space-between; gap: 12px; }
+  .tabla-cuentas td.num::before { content: attr(data-label); color: var(--texto-suave); font-weight: 400; text-align: left; }
+  .tabla-cuentas .saldo { flex-wrap: wrap; }
+  .tabla-cuentas .saldo-texto { width: 100%; text-align: right; }
+}
+
+@media (min-width: 900px) {
+  .filtros-grid-2 { grid-template-columns: minmax(240px, 360px) auto; justify-content: space-between; }
+}
+
 /* Aviso global (cotizaciones a confirmar) */
 .aviso-global {
   position: fixed;

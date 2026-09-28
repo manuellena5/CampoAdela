@@ -7,6 +7,8 @@ import * as categorias from './ui/categorias.js';
 import * as hermanos from './ui/hermanos.js';
 import * as mas from './ui/mas.js';
 import * as configuracion from './ui/configuracion.js';
+import * as resumen from './ui/resumen.js';
+import * as cuentas from './ui/cuentas.js';
 import { configuracionCompleta } from './ajustes.js';
 
 // `nav` = qué ítem de la barra de navegación se marca como activo.
@@ -16,6 +18,9 @@ const RUTAS = [
   { patron: /^\/movimientos\/nuevo$/, vista: movimientoForm, nav: 'nuevo' },
   { patron: /^\/movimientos\/([\w-]+)$/, vista: movimientoForm, nav: 'movimientos', params: ['id'] },
   { patron: /^\/campanas$/, vista: campanas, nav: 'campanas' },
+  { patron: /^\/resumen$/, vista: resumen, nav: 'resumen' },
+  { patron: /^\/resumen\/([\w-]+)$/, vista: resumen, nav: 'resumen', params: ['id'] },
+  { patron: /^\/cuentas$/, vista: cuentas, nav: 'cuentas' },
   { patron: /^\/categorias$/, vista: categorias, nav: 'categorias' },
   { patron: /^\/hermanos$/, vista: hermanos, nav: 'hermanos' },
   { patron: /^\/mas$/, vista: mas, nav: 'mas', libre: true },
@@ -47,7 +52,7 @@ async function resolver() {
   (def.params || []).forEach((nombre, i) => { params[nombre] = decodeURIComponent(match[i + 1]); });
 
   // En celular, Categorías/Hermanos/Configuración cuelgan de "Más".
-  const bajoMas = ['categorias', 'hermanos', 'configuracion'].includes(def.nav);
+  const bajoMas = ['resumen', 'cuentas', 'categorias', 'hermanos', 'configuracion'].includes(def.nav);
   document.querySelectorAll('.nav a').forEach((a) => {
     a.classList.toggle('activo', a.dataset.ruta === def.nav || (bajoMas && a.dataset.ruta === 'mas'));
   });
