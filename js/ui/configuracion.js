@@ -8,6 +8,8 @@ import { sincronizar, alCambiarEstado } from '../sync.js';
 import { esc, $, toast } from '../lib/dom.js';
 import { formatoFechaHora } from '../lib/formato.js';
 import { navegar } from '../router.js';
+import { descargarPlantilla, leerArchivo, cargarCatalogos } from '../importacion.js';
+import { iniciarRevision } from './importar.js';
 
 const DESCRIPCION_ESTADO = {
   'sin-config': 'Falta la URL del Apps Script en js/config.js',
@@ -84,6 +86,19 @@ export async function render(el) {
         <button type="button" class="btn btn-bloque" id="sync-ahora" ${APPS_SCRIPT_URL ? '' : 'disabled'}>Sincronizar ahora</button>
       </div>
 
+      <h2>Importar movimientos</h2>
+      <div class="tarjeta">
+        <p class="detalle" style="margin-top:0">
+          1. Descargá la plantilla y completala en Excel (una fila por movimiento).<br>
+          2. Guardala como CSV y elegila acá. Antes de guardar vas a poder revisar y corregir los errores.
+        </p>
+        <div class="acciones">
+          <button type="button" class="btn" id="descargar-plantilla">Descargar plantilla</button>
+          <label class="btn btn-primario" for="archivo-import">Elegir archivo…</label>
+        </div>
+        <input type="file" id="archivo-import" accept=".csv,text/csv,text/plain" hidden>
+      </div>
+
       <h2>Aplicación</h2>
       <div class="tarjeta">
         <div class="fila-dato"><span>Versión</span><strong>${esc(APP_VERSION)}</strong></div>
@@ -136,6 +151,23 @@ export async function render(el) {
     if (nuevaClave !== clave) sincronizar();
     if (!completa) navegar('/movimientos');
     else render(el);
+  });
+
+  $('#descargar-plantilla', el).addEventListener('click', () => descargarPlantilla());
+
+  $('#archivo-import', el).addEventListener('change', async (e) => {
+    const archivo = e.target.files[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo
+    if (!archivo) return;
+    if (/\.xlsx?$/i.test(archivo.name)) {
+      toast('Guardá la planilla como CSV (Archivo → Guardar como → CSV) y elegí ese archivo.', 6000);
+      return;
+    }
+    const catalogos = await cargarCatalogos();
+    const { filas, error } = leerArchivo(await archivo.text(), catalogos);
+    if (error) { toast(error, 6000); return; }
+    iniciarRevision(filas, catalogos, archivo.name);
+    navegar('/importar');
   });
 
   $('#buscar-act', el).addEventListener('click', async (e) => {

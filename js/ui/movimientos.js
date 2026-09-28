@@ -4,7 +4,8 @@ import { listar, borrar } from '../db.js';
 import * as ajustes from '../ajustes.js';
 import { PAGO_CAJA } from '../dominio.js';
 import { esc, $, toast } from '../lib/dom.js';
-import { formatoARS, formatoUSD, formatoFecha, formatoNumero } from '../lib/formato.js';
+import { formatoARS, formatoUSD, formatoFecha, formatoNumero, hoyISO } from '../lib/formato.js';
+import { generarCSV, descargarCSV, numeroCSV } from '../lib/csv.js';
 
 // Filtros de la sesión (se conservan al ir y volver de la edición).
 const filtros = { campana: '', categoria: '', periodo: '', pago: '' };
@@ -82,18 +83,24 @@ export async function render(el) {
           ${[['ARS', '$ ARS'], ['USD', 'US$'], ['AMBOS', 'Ambos']].map(([v, t]) => `
             <label><input type="radio" name="vista" value="${v}" ${v === vista ? 'checked' : ''}><span>${t}</span></label>`).join('')}
         </div>
-        <button type="button" class="btn-link" id="limpiar-filtros">Limpiar filtros</button>
+        <span class="filtros-acciones">
+          <button type="button" class="btn-link" id="limpiar-filtros">Limpiar filtros</button>
+          <button type="button" class="btn-link" id="exportar-csv">Exportar CSV</button>
+        </span>
       </div>
     </div>
 
     <div id="resultado"></div>`;
 
+  const filtrados = () => movimientos.filter((m) =>
+    (!filtros.campana || (filtros.campana === SIN_CAMPANA ? !m.campanaId : m.campanaId === filtros.campana))
+    && (!filtros.categoria || m.categoriaId === filtros.categoria)
+    && (!filtros.periodo || m.periodo === filtros.periodo)
+    && (!filtros.pago || (m.pagoId || PAGO_CAJA) === filtros.pago));
+
   const dibujar = () => {
-    const lista = movimientos.filter((m) =>
-      (!filtros.campana || (filtros.campana === SIN_CAMPANA ? !m.campanaId : m.campanaId === filtros.campana))
-      && (!filtros.categoria || m.categoriaId === filtros.categoria)
-      && (!filtros.periodo || m.periodo === filtros.periodo)
-      && (!filtros.pago || (m.pagoId || PAGO_CAJA) === filtros.pago));
+    const lista = filtrados();
+    $('#exportar-csv', el).disabled = !lista.length;
     $('#resultado', el).innerHTML = totalesHTML(lista, cat, vista) + listaHTML(lista, { cat, sub, camp, nombrePago, vista });
     $('#limpiar-filtros', el).hidden = !Object.values(filtros).some(Boolean);
   };
@@ -109,6 +116,12 @@ export async function render(el) {
   };
 
   el.onclick = async (e) => {
+    if (e.target.closest('#exportar-csv')) {
+      const lista = filtrados();
+      descargarCSV(`movimientos-${hoyISO()}.csv`, csvMovimientos(lista, { cat, sub, camp, herm, nombrePago }));
+      toast(`${lista.length} movimiento${lista.length === 1 ? '' : 's'} exportado${lista.length === 1 ? '' : 's'}`);
+      return;
+    }
     if (e.target.closest('#limpiar-filtros')) {
       Object.keys(filtros).forEach((k) => { filtros[k] = TODAS; });
       render(el);
@@ -125,6 +138,7 @@ export async function render(el) {
       render(el);
       return;
     }
+    if (e.target.closest('a.clip')) return; // abre el comprobante, no la edición
     const fila = e.target.closest('[data-id]');
     if (fila) location.hash = `#/movimientos/${fila.dataset.id}`;
   };
@@ -134,6 +148,30 @@ export async function render(el) {
   };
 
   dibujar();
+}
+
+// ---- Exportación
+
+const ESTADO_TC = { api: 'API', manual: 'Manual', a_confirmar: 'A confirmar' };
+
+function csvMovimientos(lista, { cat, sub, camp, herm, nombrePago }) {
+  const encabezados = [
+    'Fecha', 'Período', 'Tipo', 'Categoría', 'Subcategoría', 'Campaña', 'Descripción', 'Proveedor',
+    'Moneda', 'Monto original', 'Tipo de dólar', 'TC', 'Fecha TC', 'Estado TC', 'Monto ARS', 'Monto USD',
+    'Quintales', 'Precio por qq', 'Pagó', 'Comprobante', 'Cargado por', 'Id',
+  ];
+  const filas = lista.map((m) => {
+    const c = cat[m.categoriaId];
+    return [
+      formatoFecha(m.fecha), m.periodo, c?.tipo === 'ingreso' ? 'Ingreso' : 'Gasto', c?.nombre || '',
+      sub[m.subcategoriaId]?.nombre || '', m.campanaId ? camp[m.campanaId]?.nombre || '' : 'Sin campaña',
+      m.descripcion, m.proveedor, m.moneda, numeroCSV(m.montoOriginal), m.tipoDolar === 'OFICIAL' ? 'Oficial' : 'MEP',
+      numeroCSV(m.tc, 4), formatoFecha(m.tcFecha), ESTADO_TC[m.tcEstado] || m.tcEstado,
+      numeroCSV(m.montoARS), numeroCSV(m.montoUSD), numeroCSV(m.quintales), numeroCSV(m.precioQq),
+      nombrePago(m.pagoId), m.comprobanteUrl, herm[m.cargadoPor]?.nombre || m.cargadoPor, m.id,
+    ];
+  });
+  return generarCSV(encabezados, filas);
 }
 
 // ---- Totales
@@ -189,7 +227,9 @@ function listaHTML(lista, { cat, sub, camp, nombrePago, vista }) {
   };
   const badgeTc = (m) => (m.tcEstado === 'a_confirmar' ? ' <span class="badge badge-a-confirmar">TC a confirmar</span>' : '');
   const nombreCampana = (m) => (m.campanaId ? esc(camp[m.campanaId]?.nombre || '¿?') : '<span class="texto-suave">Sin campaña</span>');
-  const detalle = (m) => [m.descripcion, m.proveedor].filter(Boolean).map(esc).join(' · ');
+  const clip = (m) => (m.comprobanteUrl
+    ? ` <a class="clip" href="${esc(m.comprobanteUrl)}" target="_blank" rel="noopener" title="Ver comprobante" aria-label="Ver comprobante">📎</a>` : '');
+  const detalle = (m) => [m.descripcion, m.proveedor].filter(Boolean).map(esc).join(' · ') + clip(m);
   const btnBorrar = (m) => `<button type="button" class="btn-icono btn-borrar" data-borrar="${esc(m.id)}" aria-label="Borrar" title="Borrar">🗑</button>`;
 
   const encabezadoMonto = vista === 'AMBOS' ? 'Monto' : vista === 'ARS' ? 'Monto $' : 'Monto US$';

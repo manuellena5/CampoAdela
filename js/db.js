@@ -19,6 +19,11 @@ db.version(1).stores({
   cotizaciones: '[tipo+fecha], tipo',
 });
 
+// v2 (Fase 7): cola local de comprobantes pendientes de subir a Drive.
+db.version(2).stores({
+  archivos: 'id, movimientoId',
+});
+
 db.on('populate', async (tx) => {
   await tx.table('hermanos').bulkAdd(SEED.hermanos);
   await tx.table('categorias').bulkAdd(SEED.categorias);
@@ -64,11 +69,12 @@ async function usuarioActual() {
 }
 
 // Alta: agrega los campos comunes y marca pendiente de sincronizar.
-export async function crear(tabla, datos) {
+// `id` opcional (p. ej. para encolar un comprobante antes de crear el movimiento).
+export async function crear(tabla, datos, id = crypto.randomUUID()) {
   const ahora = new Date().toISOString();
   const registro = {
     ...datos,
-    id: crypto.randomUUID(),
+    id,
     creado: ahora,
     modificado: ahora,
     cargadoPor: await usuarioActual(),

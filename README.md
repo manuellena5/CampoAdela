@@ -34,6 +34,12 @@ nunca contra el Sheet real.
 Los usuarios con la app abierta ven el banner **"Nueva versión disponible — Actualizar"**.
 Actualizar nunca borra los datos locales (IndexedDB).
 
+## Migración desde el Excel
+
+`python tools/generar-migracion.py` (requiere `openpyxl`) genera `migracion/movimientos-excel.csv`
+en el formato de la plantilla de importación. Esa carpeta y el Excel no se suben al repo.
+Luego: Configuración → Importar movimientos → Elegir archivo.
+
 ## Íconos
 
 `powershell -ExecutionPolicy Bypass -File tools/generar-iconos.ps1` regenera los PNG de `/icons`.

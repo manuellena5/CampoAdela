@@ -70,6 +70,11 @@ function doPost(e) {
     if (!claveOk) return responder({ ok: false, error: 'Falta configurar la Script Property CLAVE.' });
     if (pedido.clave !== claveOk) return responder({ ok: false, error: 'Clave incorrecta', codigo: 'CLAVE' });
 
+    // La subida de comprobantes no toca el Sheet: va sin lock para no frenar la sincronización.
+    if (pedido.accion === 'subirComprobante') {
+      return responder({ ok: true, datos: accionSubirComprobante(pedido.datos || {}) });
+    }
+
     var acciones = { init: accionInit, push: accionPush, pull: accionPull };
     var accion = acciones[pedido.accion];
     if (!accion) return responder({ ok: false, error: 'Acción desconocida: ' + pedido.accion });
@@ -88,6 +93,13 @@ function doGet() {
 // Para ejecutar a mano desde el editor la primera vez (pide los permisos y crea las pestañas).
 function inicializar() {
   conLock(accionInit);
+  autorizarDrive();
+}
+
+// Para ejecutar a mano desde el editor: pide el permiso de Drive y verifica la carpeta de comprobantes.
+function autorizarDrive() {
+  var carpeta = carpetaComprobantes();
+  Logger.log('Carpeta de comprobantes: ' + carpeta.getName() + ' (' + carpeta.getUrl() + ')');
 }
 
 function responder(obj) {
@@ -144,6 +156,29 @@ function accionPull(datos) {
     entidades[entidad] = lista;
   });
   return { entidades: entidades, syncTs: ahora - MARGEN_PULL_MS };
+}
+
+// ---------------------------------------------------------------- Comprobantes (Drive)
+
+var MAX_COMPROBANTE_BYTES = 15 * 1024 * 1024;
+var TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+
+function carpetaComprobantes() {
+  var id = PropertiesService.getScriptProperties().getProperty('CARPETA_COMPROBANTES');
+  if (!id) throw new Error('Falta configurar la Script Property CARPETA_COMPROBANTES.');
+  return DriveApp.getFolderById(id);
+}
+
+// datos = { nombre, mimeType, base64, movimientoId }  →  { url, id }
+function accionSubirComprobante(datos) {
+  if (!datos.base64) throw new Error('Archivo vacío.');
+  if (TIPOS_COMPROBANTE.indexOf(datos.mimeType) < 0) throw new Error('Tipo de archivo no permitido: ' + datos.mimeType);
+  var bytes = Utilities.base64Decode(datos.base64);
+  if (bytes.length > MAX_COMPROBANTE_BYTES) throw new Error('El archivo supera los 15 MB.');
+  var nombre = String(datos.nombre || 'comprobante').replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
+  var prefijo = Utilities.formatDate(new Date(), ZONA_HORARIA, 'yyyy-MM-dd') + '_' + String(datos.movimientoId || '').slice(0, 8);
+  var archivo = carpetaComprobantes().createFile(Utilities.newBlob(bytes, datos.mimeType, prefijo + '_' + nombre));
+  return { url: archivo.getUrl(), id: archivo.getId() };
 }
 
 // ---------------------------------------------------------------- Hojas

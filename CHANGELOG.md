@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.0 — 2026-09-28 — Fase 7: migración y extras
+- **Importar movimientos** (Configuración): descargar plantilla CSV (con filas de ayuda y valores válidos),
+  completarla en Excel y elegir el archivo. Pantalla de revisión con los errores de cada fila: se pueden
+  corregir en el lugar o ignorar la fila. Posibles duplicados (misma fecha, categoría, moneda y monto)
+  vienen ignorados. Sin cotización, se busca la del día. Acepta `;`, `,` o tab y números es-AR.
+- **Comprobantes**: foto o PDF por movimiento, guardados en una carpeta de Drive (Script Property
+  `CARPETA_COMPROBANTES`). Las fotos se achican a 1600 px antes de subir. Sin conexión quedan en cola
+  (tabla `archivos`, Dexie v2) y se suben al sincronizar. 📎 en el listado abre el comprobante.
+  `js/storage.js` encapsula la subida (`subir(archivo) → url`).
+- **Exportar CSV** desde el listado (respeta los filtros); se puede volver a importar.
+- `js/api.js`: llamadas al Apps Script compartidas por sync y storage.
+- `tools/generar-migracion.py`: arma el CSV de importación desde la hoja "Movimientos" del Excel
+  (queda en `migracion/`, fuera del repo). La fecha se deduce de la cotización de cada fila.
+- La especificación ya no está en el repositorio.
+
 ## 0.6.0 — 2026-09-28 — Fase 6: resumen de campaña y cuentas entre hermanos
 - Resumen de campaña: gastos total y por ha (ARS/USD) por categoría y subcategoría con %, ingresos
   (kg, qq, $, precio promedio por qq), margen bruto total y por ha, rinde qq/ha y ⅓ del margen por hermano.

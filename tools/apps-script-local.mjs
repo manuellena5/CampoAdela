@@ -82,15 +82,35 @@ const libro = {
   insertSheet: (n) => { const h = new Hoja(n); hojas.set(n, h); return h; },
 };
 
+// Drive simulado: los archivos quedan en memoria (GET /__archivos los lista).
+const archivos = [];
+const carpeta = {
+  getName: () => 'Comprobantes (simulado)',
+  getUrl: () => 'http://localhost:8090/__carpeta',
+  createFile: (blob) => {
+    const id = `archivo-${archivos.length + 1}`;
+    archivos.push({ id, nombre: blob.nombre, tipo: blob.tipo, bytes: blob.bytes.length });
+    return { getId: () => id, getUrl: () => `http://localhost:8090/__archivo/${id}` };
+  },
+};
+
+const PROPIEDADES = { CLAVE, CARPETA_COMPROBANTES: 'carpeta-simulada' };
+
 const contexto = vm.createContext({
   SpreadsheetApp: { getActiveSpreadsheet: () => libro },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
-  PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'CLAVE' ? CLAVE : null) }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => PROPIEDADES[k] ?? null }) },
   ContentService: {
     MimeType: { JSON: 'application/json' },
     createTextOutput: (texto) => ({ setMimeType() { return this; }, getContent: () => texto }),
   },
-  Utilities: { formatDate: (d) => d.toISOString().slice(0, 10) },
+  DriveApp: { getFolderById: (id) => { if (id !== PROPIEDADES.CARPETA_COMPROBANTES) throw new Error('Carpeta inexistente'); return carpeta; } },
+  Utilities: {
+    formatDate: (d) => d.toISOString().slice(0, 10),
+    base64Decode: (b64) => [...Buffer.from(b64, 'base64')],
+    newBlob: (bytes, tipo, nombre) => ({ bytes, tipo, nombre }),
+  },
+  Logger: { log: console.log },
   Session: { getScriptTimeZone: () => 'America/Argentina/Buenos_Aires' },
   console,
 });
@@ -104,6 +124,10 @@ const CORS = { 'Access-Control-Allow-Origin': '*' };
 
 createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (req.method === 'GET' && url.pathname === '/__archivos') {
+    res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' }).end(JSON.stringify(archivos));
+    return;
+  }
   if (req.method === 'GET' && url.pathname === '/__hojas') {
     const volcado = Object.fromEntries([...hojas].map(([n, h]) => [n, h.datos]));
     res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' }).end(JSON.stringify(volcado, null, 1));

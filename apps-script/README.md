@@ -21,6 +21,10 @@ La app le habla por HTTP (`push` / `pull` / `init`) y el script lee y escribe la
    - Valor: la clave que van a usar los tres (la misma que se carga en la app, en Configuración).
    - *Guardar propiedades de la secuencia de comandos*.
 
+   Agregar también `CARPETA_COMPROBANTES` con el ID de la carpeta de Drive donde se guardan las fotos/PDF
+   de comprobantes (la parte final de la URL de la carpeta: `drive.google.com/drive/folders/<ID>`).
+   Los comprobantes heredan los permisos de esa carpeta: compartila con los tres hermanos.
+
 5. **Inicializar y autorizar.** Volver al editor (`< >` a la izquierda). En la barra de arriba elegir la función
    `inicializar` y tocar **Ejecutar**. Google pide permisos:
    *Revisar permisos → elegir tu cuenta → Configuración avanzada → Ir a Campo API (no seguro) → Permitir*.
@@ -45,7 +49,9 @@ La app le habla por HTTP (`push` / `pull` / `init`) y el script lee y escribe la
 
 ## Actualizar el código del script
 
-Pegar el `Code.gs` nuevo, guardar, y luego *Implementar → Administrar implementaciones → ✏️ (editar) →
+Pegar el `Code.gs` nuevo, guardar. Si la versión nueva usa un servicio de Google que antes no usaba
+(por ejemplo Drive para los comprobantes), ejecutar una vez desde el editor la función que lo usa
+(`autorizarDrive`) y aceptar el permiso nuevo. Luego *Implementar → Administrar implementaciones → ✏️ (editar) →
 Versión: **Nueva versión** → Implementar*. Así **la URL no cambia**.
 (Si se hace *Nueva implementación*, se genera otra URL y hay que cambiarla en la app.)
 

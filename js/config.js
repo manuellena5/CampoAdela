@@ -1,7 +1,7 @@
 // Configuración fija de la app. Se versiona con el código para que
 // sobreviva a un borrado de caché/datos del navegador.
 
-export const APP_VERSION = '0.6.0';
+export const APP_VERSION = '0.7.0';
 
 // URL del Web App de Google Apps Script.
 const URL_PRODUCCION = 'https://script.google.com/macros/s/AKfycbyiNVgNd6wco_6vC2X9WTMLxvPJcNd1u-fv9vaIa7MXDG_LbGE6NTYMhiLFAMF5xmot/exec';

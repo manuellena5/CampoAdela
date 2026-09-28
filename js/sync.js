@@ -5,8 +5,8 @@ import { APPS_SCRIPT_URL } from './config.js';
 import { db, TABLAS_SYNC, alCambiarDatos } from './db.js';
 import * as ajustes from './ajustes.js';
 import { normalizarMovimiento } from './dominio.js';
-
-const TIMEOUT_MS = 60000;
+import { llamar, mensajeError } from './api.js';
+import { procesarCola } from './storage.js';
 
 // estado: 'sin-config' | 'sin-conexion' | 'sincronizando' | 'ok' | 'pendientes' | 'error'
 let estado = { estado: 'ok', pendientes: 0, error: '' };
@@ -32,7 +32,7 @@ function setEstado(cambios) {
 export async function contarPendientes() {
   let total = 0;
   for (const t of TABLAS_SYNC) total += await db.table(t).filter((r) => r.pendiente).count();
-  return total;
+  return total + await db.archivos.count(); // comprobantes en cola
 }
 
 // Recalcula el estado "en reposo" según conexión y pendientes.
@@ -44,27 +44,6 @@ async function refrescarEstado(extra = {}) {
   else if (extra.error) e = 'error';
   else e = pendientes ? 'pendientes' : 'ok';
   setEstado({ estado: e, pendientes, error: extra.error || '' });
-}
-
-async function llamar(accion, datos) {
-  const clave = await ajustes.obtener('clave');
-  // text/plain evita el preflight de CORS (Apps Script no responde OPTIONS).
-  const resp = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ clave, accion, datos }),
-    // Con señal débil un request puede quedar colgado; Apps Script "en frío" tarda varios segundos.
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  let json;
-  try {
-    json = await resp.json();
-  } catch {
-    throw new Error('Respuesta inválida del servidor (¿URL del Apps Script correcta?)');
-  }
-  if (!json.ok) throw new Error(json.error || 'Error del servidor');
-  return json.datos;
 }
 
 // Sin `pendiente` (es solo local).
@@ -91,6 +70,10 @@ async function mergeRegistro(tabla, remoto) {
 
 async function ciclo() {
   let cambios = 0;
+
+  // 0. comprobantes en cola: al subirse actualizan comprobanteUrl, que viaja en el push.
+  //    Un error acá no frena la sincronización de datos.
+  const { error: errorComprobantes } = await procesarCola();
 
   // 1. push
   const envio = {};
@@ -136,7 +119,7 @@ async function ciclo() {
   // 4. lastSync
   await ajustes.guardar('lastSync', res.syncTs);
   await ajustes.guardar('ultimaSyncLocal', new Date().toISOString());
-  return cambios;
+  return { cambios, errorComprobantes };
 }
 
 // Ejecuta un ciclo completo. Si ya hay uno en curso, devuelve ese.
@@ -154,15 +137,14 @@ export function sincronizar() {
     }
     setEstado({ estado: 'sincronizando' });
     try {
-      const cambios = await ciclo();
-      await refrescarEstado();
+      const { cambios, errorComprobantes } = await ciclo();
+      const error = errorComprobantes ? `Comprobantes: ${errorComprobantes}` : '';
+      await refrescarEstado({ error });
       if (cambios) window.dispatchEvent(new CustomEvent('datos-sincronizados', { detail: { cambios } }));
-      return { ok: true, cambios };
+      return { ok: true, cambios, error: error || undefined };
     } catch (err) {
       console.warn('Error de sincronización', err);
-      const mensaje = err.name === 'TimeoutError' ? 'El servidor tardó demasiado en responder'
-        : err instanceof TypeError ? 'No se pudo contactar al servidor'
-        : err.message;
+      const mensaje = mensajeError(err);
       await refrescarEstado({ error: mensaje });
       return { ok: false, cambios: 0, error: mensaje };
     }

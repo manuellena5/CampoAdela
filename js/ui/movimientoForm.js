@@ -7,6 +7,7 @@ import { PAGO_CAJA, calcularMontos, campanaParaFecha, periodoDe, redondear } fro
 import { esc, $, toast } from '../lib/dom.js';
 import { formatoARS, formatoUSD, formatoFecha, hoyISO, parsearMonto, numeroEditable } from '../lib/formato.js';
 import { navegar } from '../router.js';
+import { TIPOS_ACEPTADOS, validarArchivo, prepararArchivo, encolar, pendienteDe, quitarDeCola } from '../storage.js';
 
 const ETIQUETA_ESTADO_TC = { api: '', manual: 'manual', a_confirmar: 'a confirmar' };
 
@@ -115,6 +116,12 @@ export async function render(el, { id } = {}, plantilla = null) {
           </div>
         </div>
 
+        <div class="campo">
+          <span class="label">Comprobante</span>
+          <div class="comprobante" id="m-comprobante"></div>
+          <input type="file" id="m-archivo" accept="${TIPOS_ACEPTADOS}" hidden>
+        </div>
+
         <details class="mas-datos" ${masDatosAbierto ? 'open' : ''}>
           <summary>Más datos</summary>
           <div class="campo">
@@ -211,6 +218,48 @@ export async function render(el, { id } = {}, plantilla = null) {
     mostrarCotizacion();
   }
 
+  // ---- Comprobante
+
+  const comprobante = {
+    nuevo: null, // File elegido en esta edición
+    quitar: false,
+    pendiente: existente ? await pendienteDe(existente.id) : null, // en cola, sin subir
+  };
+
+  function mostrarComprobante() {
+    const cont = $('#m-comprobante', el);
+    const acciones = '<button type="button" class="btn-link" data-comp="cambiar">Cambiar</button>'
+      + '<button type="button" class="btn-link texto-peligro" data-comp="quitar">Quitar</button>';
+    if (comprobante.nuevo) {
+      cont.innerHTML = `<span>📎 ${esc(comprobante.nuevo.name)} <span class="texto-suave">(se sube al guardar)</span></span>${acciones}`;
+    } else if (comprobante.pendiente && !comprobante.quitar) {
+      cont.innerHTML = `<span>📎 ${esc(comprobante.pendiente.nombre)} <span class="badge badge-a-confirmar">pendiente de subir</span></span>${acciones}`;
+    } else if (m.comprobanteUrl && !comprobante.quitar) {
+      cont.innerHTML = `<a href="${esc(m.comprobanteUrl)}" target="_blank" rel="noopener">📎 Ver comprobante</a>${acciones}`;
+    } else {
+      cont.innerHTML = '<button type="button" class="btn btn-bloque" data-comp="cambiar">📷 Adjuntar foto o PDF</button>';
+    }
+  }
+
+  $('#m-comprobante', el).addEventListener('click', (e) => {
+    const accion = e.target.closest('[data-comp]')?.dataset.comp;
+    if (accion === 'cambiar') $('#m-archivo', el).click();
+    if (accion === 'quitar') {
+      Object.assign(comprobante, { nuevo: null, quitar: true });
+      mostrarComprobante();
+    }
+  });
+
+  $('#m-archivo', el).addEventListener('change', (e) => {
+    const archivo = e.target.files[0];
+    e.target.value = '';
+    if (!archivo) return;
+    const error = validarArchivo(archivo);
+    if (error) { toast(error); return; }
+    Object.assign(comprobante, { nuevo: archivo, quitar: false });
+    mostrarComprobante();
+  });
+
   // ---- Eventos
 
   campo('categoriaId').addEventListener('change', actualizarCategoria);
@@ -285,11 +334,16 @@ export async function render(el, { id } = {}, plantilla = null) {
       quintales: opcional('quintales'),
       precioQq: opcional('precioQq'),
       pagoId: valorRadio('pagoId') || PAGO_CAJA,
-      comprobanteUrl: m.comprobanteUrl || '',
+      comprobanteUrl: comprobante.quitar ? '' : m.comprobanteUrl || '',
     };
 
+    // El comprobante se encola antes de guardar: la sincronización que dispara el guardado ya lo sube.
+    const movId = existente?.id || crypto.randomUUID();
+    if (comprobante.nuevo) await encolar(movId, await prepararArchivo(comprobante.nuevo));
+    else if (comprobante.quitar) await quitarDeCola(movId);
+
     if (existente) await actualizar('movimientos', existente.id, datos);
-    else await crear('movimientos', datos);
+    else await crear('movimientos', datos, movId);
 
     toast(estado.tcEstado === 'a_confirmar' ? 'Guardado (cotización a confirmar)' : 'Guardado');
     if (accion === 'otro') {
@@ -303,6 +357,7 @@ export async function render(el, { id } = {}, plantilla = null) {
 
   actualizarCategoria();
   mostrarCotizacion();
+  mostrarComprobante();
   if (!existente) buscarCotizacion();
   if (!existente) campo('categoriaId').focus();
 }
