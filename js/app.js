@@ -4,6 +4,7 @@ import { iniciarRouter, refrescar } from './router.js';
 import { registrarSW, verificarYMostrar, aplicarActualizacion } from './actualizacion.js';
 import { abrirDB } from './db.js';
 import { iniciarSync, alCambiarEstado, sincronizar } from './sync.js';
+import { movimientosAConfirmar, recalcularAConfirmar } from './dolar.js';
 import { esc, toast } from './lib/dom.js';
 
 const TEXTOS_SYNC = {
@@ -39,6 +40,40 @@ document.addEventListener('visibilitychange', () => {
 
 window.addEventListener('datos-sincronizados', refrescar);
 
+// ---- Movimientos con cotización "a confirmar": al haber conexión se ofrece recalcularlos.
+let avisoDescartado = false;
+
+async function revisarAConfirmar() {
+  const aviso = document.getElementById('aviso-cotizaciones');
+  const pendientes = navigator.onLine && !avisoDescartado ? (await movimientosAConfirmar()).length : 0;
+  aviso.hidden = !pendientes;
+  if (pendientes) {
+    document.getElementById('aviso-cotizaciones-texto').textContent = pendientes === 1
+      ? '1 movimiento con cotización a confirmar'
+      : `${pendientes} movimientos con cotización a confirmar`;
+  }
+}
+
+document.getElementById('btn-recalcular').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Recalculando…';
+  const n = await recalcularAConfirmar();
+  btn.disabled = false;
+  btn.textContent = 'Recalcular';
+  toast(n ? `Cotización actualizada en ${n} movimiento${n === 1 ? '' : 's'}` : 'No se pudo obtener la cotización');
+  await revisarAConfirmar();
+  refrescar();
+});
+document.getElementById('btn-recalcular-no').addEventListener('click', () => {
+  avisoDescartado = true;
+  revisarAConfirmar();
+});
+window.addEventListener('online', () => { avisoDescartado = false; revisarAConfirmar(); });
+window.addEventListener('offline', revisarAConfirmar);
+window.addEventListener('datos-sincronizados', revisarAConfirmar);
+window.addEventListener('hashchange', revisarAConfirmar);
+
 verificarYMostrar();
 
 try {
@@ -46,6 +81,7 @@ try {
   alCambiarEstado(mostrarEstadoSync);
   iniciarRouter();
   iniciarSync();
+  revisarAConfirmar();
 } catch (err) {
   console.error(err);
   document.getElementById('vista').innerHTML = `

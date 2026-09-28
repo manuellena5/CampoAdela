@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 — 2026-09-28 — Fase 4: carga de movimientos y dólar
+- `js/dolar.js`: cotización de venta MEP/Oficial. Hoy desde dolarapi.com; fechas pasadas desde
+  ArgentinaDatos por fecha puntual. Fines de semana y feriados (API de feriados, cacheada por año)
+  usan el último día hábil, que se guarda en `tcFecha`. Cache en la tabla `cotizaciones`.
+- Sin conexión: última cotización conocida con estado "a confirmar". Al volver la conexión aparece un aviso
+  para recalcularlas (no se hace solo).
+- Formulario de carga/edición: fecha (hoy), categoría con tipo, subcategoría filtrada, monto con toggle $/US$,
+  tipo de dólar y TC editables con fecha real y equivalente en vivo, campaña precargada según la fecha
+  (la más reciente si se superponen), quién pagó (Caja común por defecto), "Más datos" (descripción,
+  proveedor, quintales, precio por qq y "calcular monto").
+- "Guardar y cargar otro" conserva fecha, campaña, pagó, moneda y tipo de dólar.
+- Borrado lógico con confirmación. Listado simple de movimientos (el completo llega en la Fase 5).
+- `periodo` (AAAAMM) se deriva localmente también en los movimientos que llegan por sincronización.
+
 ## 0.3.1 — 2026-09-28 — Correcciones
 - URL del Apps Script de producción en `js/config.js`. En `localhost` se usa el Apps Script simulado.
 - Banner "Nueva versión" que no desaparecía: `version.json` (0.4.0) y `APP_VERSION` (0.3.0) no coincidían.

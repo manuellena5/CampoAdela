@@ -45,11 +45,19 @@ export function formatoFechaHora(iso) {
   return iso ? fmtFechaHora.format(new Date(iso)) : '';
 }
 
-// Convierte texto ingresado ("1.234,56" o "1234.56") a número.
+// Convierte texto ingresado a número. Acepta "1.234,56", "1234,56", "1234.56" y "1.234.567"
+// (punto como separador de miles, al estilo es-AR).
 export function parsearMonto(texto) {
   if (typeof texto === 'number') return texto;
   let t = String(texto ?? '').trim().replace(/\s|\$|US/g, '');
   if (!t) return NaN;
   if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
   return Number(t);
+}
+
+// Número → texto editable en es-AR sin símbolo ("1.234,5").
+export function numeroEditable(n, decimales = 2) {
+  if (n === null || n === undefined || n === '' || Number.isNaN(Number(n))) return '';
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: decimales }).format(n);
 }

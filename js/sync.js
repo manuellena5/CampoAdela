@@ -4,6 +4,7 @@
 import { APPS_SCRIPT_URL } from './config.js';
 import { db, TABLAS_SYNC, alCambiarDatos } from './db.js';
 import * as ajustes from './ajustes.js';
+import { normalizarMovimiento } from './dominio.js';
 
 const TIMEOUT_MS = 60000;
 
@@ -72,13 +73,19 @@ function paraEnviar(registro) {
   return resto;
 }
 
+// Registro remoto listo para guardar local (con campos derivados, sin pendiente).
+function paraGuardar(tabla, remoto) {
+  const reg = tabla === 'movimientos' ? normalizarMovimiento(remoto) : remoto;
+  return { ...reg, pendiente: false };
+}
+
 // Aplica un registro remoto si es más nuevo (o igual) que el local.
 // Devuelve true si cambió algo.
 async function mergeRegistro(tabla, remoto) {
   const local = await db.table(tabla).get(remoto.id);
   if (local && String(local.modificado) > String(remoto.modificado)) return false; // gana el local
   if (local && !local.pendiente && local.modificado === remoto.modificado) return false; // ya estaba
-  await db.table(tabla).put({ ...remoto, pendiente: false });
+  await db.table(tabla).put(paraGuardar(tabla, remoto));
   return true;
 }
 
@@ -107,7 +114,7 @@ async function ciclo() {
         for (const remoto of res.rechazados?.[t] || []) {
           const local = await db.table(t).get(remoto.id);
           if (!local || String(local.modificado) <= String(remoto.modificado)) {
-            await db.table(t).put({ ...remoto, pendiente: false });
+            await db.table(t).put(paraGuardar(t, remoto));
             cambios++;
           }
         }

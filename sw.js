@@ -18,6 +18,8 @@ const ASSETS = [
   'js/db.js',
   'js/seed.js',
   'js/sync.js',
+  'js/dolar.js',
+  'js/dominio.js',
   'js/ajustes.js',
   'js/actualizacion.js',
   'js/lib/dom.js',
