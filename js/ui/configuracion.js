@@ -3,7 +3,7 @@
 import { APP_VERSION, APPS_SCRIPT_URL } from '../config.js';
 import * as ajustes from '../ajustes.js';
 import { listar } from '../db.js';
-import { verificarYMostrar } from '../actualizacion.js';
+import { verificarYMostrar, forzarActualizacion } from '../actualizacion.js';
 import { sincronizar, alCambiarEstado } from '../sync.js';
 import { esc, $, toast } from '../lib/dom.js';
 import { formatoFechaHora } from '../lib/formato.js';
@@ -174,7 +174,10 @@ export async function render(el) {
     btn.disabled = false;
     btn.textContent = 'Buscar actualizaciones';
     if (!navigator.onLine) toast('Sin conexión');
-    else if (inconsistente) toast(`Publicada: ${inconsistente}, pero la app dice ${APP_VERSION}. Revisar APP_VERSION en js/config.js.`, 6000);
+    else if (inconsistente) {
+      if (confirm(`Hay una versión publicada (${inconsistente}) que no se terminó de instalar (la app sigue en ${APP_VERSION}).\n\n`
+        + '¿Forzar la actualización? Se vuelve a descargar la app; tus datos no se borran.')) forzarActualizacion();
+    }
     else toast(nueva ? `Hay una versión nueva: ${nueva}` : 'Ya tenés la última versión');
   });
 }

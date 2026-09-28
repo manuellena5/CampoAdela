@@ -49,13 +49,31 @@ const ASSETS = [
   'icons/apple-touch-icon.png',
 ];
 
+// Cada archivo se pide con ?v=VERSION: para la CDN de GitHub Pages (que cachea hasta 10 min) es una URL
+// nueva, así nunca se guarda una copia vieja. Se guarda en el cache sin el ?v, con la URL normal.
+async function precachear() {
+  await caches.delete(CACHE); // por si quedó una instalación a medias
+  const cache = await caches.open(CACHE);
+  await Promise.all(ASSETS.map(async (ruta) => {
+    const url = new URL(ruta, self.registration.scope);
+    const pedido = new URL(url);
+    pedido.searchParams.set('v', VERSION);
+    const resp = await fetch(pedido, { cache: 'reload' });
+    if (!resp.ok) throw new Error(`No se pudo descargar ${ruta} (${resp.status})`);
+    await cache.put(url.href, resp);
+  }));
+  // Verificación: la versión del código descargado tiene que ser la que se está instalando.
+  if (VERSION !== 'dev') {
+    const config = await (await cache.match(new URL('js/config.js', self.registration.scope).href)).text();
+    if (!config.includes(`APP_VERSION = '${VERSION}'`)) {
+      await caches.delete(CACHE);
+      throw new Error(`js/config.js no corresponde a la versión ${VERSION}`);
+    }
+  }
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) =>
-      // cache: 'reload' evita tomar archivos viejos de la caché HTTP.
-      cache.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' })))
-    )
-  );
+  event.waitUntil(precachear());
 });
 
 self.addEventListener('activate', (event) => {

@@ -74,6 +74,38 @@ function esperarInstalado(reg) {
   });
 }
 
+// Salida de emergencia: borra el Service Worker y los archivos de la app en cache y recarga,
+// así se descarga todo de nuevo. NO toca IndexedDB (los datos quedan).
+// Después se instala directamente el SW de la versión publicada (que baja todo fresco con ?v=) y recién
+// ahí se recarga: si se recargara antes, el navegador podría usar su propia caché HTTP con archivos viejos.
+export async function forzarActualizacion() {
+  sessionStorage.removeItem(CLAVE_INTENTO);
+  try {
+    const version = versionRemota || (await buscarActualizacion(), versionRemota);
+    for (const reg of await navigator.serviceWorker?.getRegistrations?.() || []) await reg.unregister();
+    for (const clave of await caches.keys()) if (clave.startsWith('campo-')) await caches.delete(clave);
+    if (version && 'serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.register(`sw.js?v=${version}`);
+      await esperarActivo(reg);
+    }
+  } catch (err) {
+    console.warn('No se pudo forzar la actualización', err);
+  }
+  location.reload();
+}
+
+// Espera a que el SW recién registrado quede activo (o falle), con un límite de tiempo.
+function esperarActivo(reg) {
+  return new Promise((resolve) => {
+    const sw = reg.installing || reg.waiting || reg.active;
+    if (!sw || sw.state === 'activated') return resolve();
+    const limite = setTimeout(resolve, 30000);
+    sw.addEventListener('statechange', () => {
+      if (sw.state === 'activated' || sw.state === 'redundant') { clearTimeout(limite); resolve(); }
+    });
+  });
+}
+
 // Activa la nueva versión: SW en espera → SKIP_WAITING → recarga.
 // Nunca toca IndexedDB.
 export async function aplicarActualizacion() {
@@ -89,6 +121,12 @@ export async function aplicarActualizacion() {
     if (!('serviceWorker' in navigator)) return recargar();
     let reg = await navigator.serviceWorker.getRegistration();
     let worker = reg?.waiting;
+    // El SW activo ya es el de la versión nueva pero la app sigue vieja: su cache quedó con archivos
+    // viejos (p. ej. la CDN todavía no se había actualizado). Registrar de nuevo no sirve: se limpia todo.
+    const activo = reg?.active?.scriptURL || '';
+    if (!worker && versionRemota && new URL(activo || location.href).searchParams.get('v') === versionRemota) {
+      return forzarActualizacion();
+    }
     if (!worker && versionRemota) {
       // Registrar el SW de la nueva versión: precachea los archivos nuevos.
       reg = await navigator.serviceWorker.register(`sw.js?v=${versionRemota}`);

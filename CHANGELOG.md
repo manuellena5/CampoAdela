@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3 — 2026-09-28 — Actualización que quedaba trabada
+- El Service Worker descarga cada archivo con `?v=VERSIÓN`: la CDN de GitHub Pages (que cachea hasta
+  10 minutos) no puede entregar copias viejas. Antes, actualizar justo después de publicar podía
+  guardar archivos de la versión anterior y la app quedaba en la versión vieja.
+- Al instalar se verifica que `js/config.js` corresponda a la versión; si no, la instalación falla
+  en lugar de quedar a medias.
+- Si igual queda trabada, "Actualizar" (o "Buscar actualizaciones" en Configuración) limpia el
+  Service Worker y la caché de la app y la vuelve a descargar. Los datos (IndexedDB) no se tocan.
+
 ## 0.7.2 — 2026-09-28 — Fechas en la plantilla
 - La columna Fecha de la plantilla pasa a formato Texto: Excel guarda lo escrito (dd/mm/aaaa) tal cual.
   Antes, con Windows en inglés, Excel interpretaba lo escrito como mes/día/año (05/09 → 9 de mayo).
