@@ -1,29 +1,18 @@
-// Importación de movimientos desde una planilla CSV (plantilla descargable).
-// Las filas que empiezan con '#' son de ayuda y se ignoran.
+// Importación de movimientos desde la plantilla Excel (.xlsx) o un CSV.
+// Se ignoran las filas de ejemplo (Descripción que empieza con "EJEMPLO") y las que empiezan con '#'.
 
 import { listar, crear } from './db.js';
 import * as ajustes from './ajustes.js';
 import { obtenerCotizacion } from './dolar.js';
-import { PAGO_CAJA, calcularMontos, periodoDe } from './dominio.js';
-import { parsearCSV, generarCSV, descargarCSV } from './lib/csv.js';
+import { PAGO_CAJA, calcularMontos, periodoDe, etiquetaCategoria } from './dominio.js';
+import { parsearCSV } from './lib/csv.js';
+import { generarXlsx, leerXlsx, fechaDeSerial } from './lib/xlsx.js';
+import { construirPlantilla, HOJA_DATOS, MARCA_EJEMPLO } from './plantilla.js';
+import { descargar } from './lib/dom.js';
 import { parsearMonto, hoyISO } from './lib/formato.js';
 
-// Columnas de la plantilla (en orden) y la clave interna de cada una.
-export const COLUMNAS = [
-  ['Fecha', 'fecha'],
-  ['Categoría', 'categoria'],
-  ['Subcategoría', 'subcategoria'],
-  ['Campaña', 'campana'],
-  ['Descripción', 'descripcion'],
-  ['Proveedor', 'proveedor'],
-  ['Moneda', 'moneda'],
-  ['Monto', 'monto'],
-  ['Tipo de dólar', 'tipoDolar'],
-  ['Cotización', 'cotizacion'],
-  ['Quintales', 'quintales'],
-  ['Precio por qq', 'precioQq'],
-  ['Pagó', 'pago'],
-];
+// Títulos de columna para los mensajes de error.
+const TITULOS = { fecha: 'Fecha', categoria: 'Categoría', monto: 'Monto' };
 
 // Encabezados aceptados (normalizados) → clave.
 const ALIAS = {
@@ -49,23 +38,9 @@ export async function cargarCatalogos() {
 // ---- Plantilla
 
 export async function descargarPlantilla() {
-  const { categorias, subcategorias, campanas, hermanos } = await cargarCatalogos();
-  const orden = (a, b) => a.orden - b.orden;
-  const ayuda = [
-    '# Filas que empiezan con # se ignoran. Borrá estas filas de ayuda o dejalas: no se importan.',
-    '# Fecha: dd/mm/aaaa. Monto: número mayor a 0 (ej. 1657000 o 1.657.000,50).',
-    '# Moneda: ARS o USD. Tipo de dólar: MEP u Oficial (vacío = el de Configuración).',
-    '# Cotización: vacía = se busca la del día; si la completás se usa esa (queda como manual).',
-    '# Campaña: vacía = Sin campaña. Pagó: vacío = Caja común.',
-    ...['gasto', 'ingreso'].flatMap((tipo) => categorias.filter((c) => c.tipo === tipo && c.activa).sort(orden).map((c) => {
-      const subs = subcategorias.filter((s) => s.categoriaId === c.id && s.activa).sort(orden).map((s) => s.nombre);
-      return `# ${tipo === 'gasto' ? 'Gasto' : 'Ingreso'}: ${c.nombre}${subs.length ? ` → subcategorías: ${subs.join(', ')}` : ''}`;
-    })),
-    `# Campañas: ${campanas.map((c) => c.nombre).join(', ') || '(ninguna)'}`,
-    `# Pagó: Caja común, ${hermanos.filter((h) => h.activo).map((h) => h.nombre).join(', ')}`,
-  ];
-  const csv = generarCSV(COLUMNAS.map(([t]) => t), ayuda.map((linea) => [linea]));
-  descargarCSV('plantilla-movimientos.csv', csv);
+  const cat = await cargarCatalogos();
+  cat.campanas.sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''));
+  descargar('plantilla-movimientos.xlsx', generarXlsx(construirPlantilla(cat, hoyISO())));
 }
 
 // ---- Lectura
@@ -98,39 +73,82 @@ function tipoDolar(texto, porDefecto) {
   return null;
 }
 
-/**
- * Lee el texto del archivo y devuelve { filas, error }.
- * Cada fila: { nro, crudo, valores, ignorar } con `valores` ya resueltos a ids donde se pudo.
- */
-export function leerArchivo(texto, cat) {
-  const matriz = parsearCSV(texto);
-  if (!matriz.length) return { error: 'El archivo está vacío.' };
+const esEncabezado = (fila) => fila.some((c) => ALIAS[norm(c)] === 'fecha') && fila.some((c) => ALIAS[norm(c)] === 'monto');
 
-  const encabezados = matriz[0].map((h) => ALIAS[norm(h)] || null);
+// Celda (texto o número de Excel) → texto. Las fechas de Excel son números de serie.
+function aTexto(valor, clave) {
+  if (typeof valor === 'number') {
+    if (clave === 'fecha') return fechaDeSerial(valor);
+    return String(Math.round(valor * 1e6) / 1e6).replace('.', ','); // coma decimal, como lo espera parsearMonto
+  }
+  return String(valor ?? '').trim();
+}
+
+// Matriz de celdas desde el archivo: .xlsx (pestaña "Movimientos" o la primera con encabezados) o CSV.
+async function matrizDeArchivo(archivo) {
+  const buffer = await archivo.arrayBuffer();
+  const firma = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
+  const esZip = firma[0] === 0x50 && firma[1] === 0x4b; // "PK"
+  if (!esZip) {
+    if (/\.xls$/i.test(archivo.name)) throw new Error('El formato .xls (Excel viejo) no se puede leer. Guardalo como .xlsx.');
+    return parsearCSV(new TextDecoder().decode(buffer));
+  }
+  const hojas = await leerXlsx(buffer);
+  const conEncabezados = hojas.filter((h) => h.filas.slice(0, 10).some(esEncabezado));
+  const hoja = conEncabezados.find((h) => norm(h.nombre) === norm(HOJA_DATOS)) || conEncabezados[0];
+  if (!hoja) throw new Error(`No encontré la pestaña "${HOJA_DATOS}" con los encabezados (Fecha, Monto…). Usá la plantilla.`);
+  return hoja.filas;
+}
+
+/**
+ * Lee el archivo (File) y devuelve { filas, error }.
+ * Cada fila: { nro, crudo, valores, ignorar, ejemplo? } con `valores` ya resueltos a ids donde se pudo.
+ */
+export async function leerArchivo(archivo, cat) {
+  let matriz;
+  try {
+    matriz = await matrizDeArchivo(archivo);
+  } catch (err) {
+    return { error: err.message };
+  }
+  const iEnc = matriz.slice(0, 10).findIndex((f) => f && esEncabezado(f));
+  if (iEnc < 0) return { error: 'No encontré la fila de encabezados (Fecha, Categoría, Monto…). Usá la plantilla descargada.' };
+
+  const encabezados = matriz[iEnc].map((h) => ALIAS[norm(h)] || null);
   for (const requerida of ['fecha', 'categoria', 'monto']) {
-    if (!encabezados.includes(requerida)) {
-      const titulo = COLUMNAS.find(([, k]) => k === requerida)[0];
-      return { error: `Falta la columna "${titulo}". Usá la plantilla descargada (fila 1 = encabezados).` };
-    }
+    if (!encabezados.includes(requerida)) return { error: `Falta la columna "${TITULOS[requerida]}". Usá la plantilla descargada.` };
   }
 
   const filas = [];
-  matriz.slice(1).forEach((celdas, i) => {
-    if ((celdas[0] || '').trim().startsWith('#')) return;
+  matriz.forEach((celdas, i) => {
+    if (i <= iEnc || !celdas) return;
     const crudo = {};
-    encabezados.forEach((clave, j) => { if (clave) crudo[clave] = (celdas[j] ?? '').trim(); });
-    filas.push({ nro: i + 2, crudo, valores: resolver(crudo, cat), ignorar: false });
+    encabezados.forEach((clave, j) => { if (clave) crudo[clave] = aTexto(celdas[j], clave); });
+    if (!Object.values(crudo).some(Boolean)) return; // fila vacía
+    if (aTexto(celdas[0]).startsWith('#')) return; // fila de ayuda
+    const ejemplo = norm(crudo.descripcion).startsWith(norm(MARCA_EJEMPLO));
+    filas.push({ nro: i + 1, crudo, valores: resolver(crudo, cat), ignorar: ejemplo, ejemplo });
   });
-  if (!filas.length) return { error: 'El archivo no tiene filas con datos.' };
+  if (!filas.some((f) => !f.ejemplo)) return { error: 'El archivo no tiene movimientos cargados (solo encabezados o filas de ejemplo).' };
 
   // Posibles duplicados (misma fecha, categoría, moneda y monto que un movimiento ya cargado): ignorados por defecto.
   filas.forEach((f) => { if (esDuplicado(f.valores, cat)) f.ignorar = true; });
   return { filas };
 }
 
+// Categoría por nombre. Acepta "Otros (gasto)" / "Otros (ingreso)"; un nombre repetido sin aclarar no se resuelve.
+function buscarCategoria(texto, categorias) {
+  const t = norm(texto);
+  if (!t) return null;
+  const porEtiqueta = categorias.find((c) => norm(etiquetaCategoria(c, categorias)) === t);
+  if (porEtiqueta) return porEtiqueta;
+  const porNombre = categorias.filter((c) => norm(c.nombre) === t);
+  return porNombre.length === 1 ? porNombre[0] : null;
+}
+
 function resolver(crudo, cat) {
   const porNombre = (lista, nombre) => lista.find((x) => norm(x.nombre) === norm(nombre));
-  const categoria = porNombre(cat.categorias, crudo.categoria);
+  const categoria = buscarCategoria(crudo.categoria, cat.categorias);
   const subcategoria = categoria && crudo.subcategoria
     ? porNombre(cat.subcategorias.filter((s) => s.categoriaId === categoria.id), crudo.subcategoria) : null;
   const sinCampana = !crudo.campana || norm(crudo.campana) === 'sin campana';
@@ -166,7 +184,12 @@ export function validar(v, crudo, cat) {
 
   if (!v.fecha) err('fecha', crudo?.fecha ? `Fecha inválida: "${crudo.fecha}" (usar dd/mm/aaaa).` : 'Falta la fecha.');
   else if (v.fecha > hoyISO()) err('fecha', 'La fecha es futura.');
-  if (!v.categoriaId) err('categoria', crudo?.categoria ? `No existe la categoría "${crudo.categoria}".` : 'Falta la categoría.');
+  if (!v.categoriaId) {
+    const repetida = crudo?.categoria && cat.categorias.filter((c) => norm(c.nombre) === norm(crudo.categoria)).length > 1;
+    err('categoria', !crudo?.categoria ? 'Falta la categoría.'
+      : repetida ? `"${crudo.categoria}" existe como gasto y como ingreso: elegí cuál.`
+        : `No existe la categoría "${crudo.categoria}".`);
+  }
   // `crudo` es lo que decía el archivo; al corregir un campo en la revisión se borra y deja de validarse.
   if (crudo?.subcategoria && v.categoriaId && !v.subcategoriaId) {
     err('subcategoria', `La categoría no tiene la subcategoría "${crudo.subcategoria}".`);

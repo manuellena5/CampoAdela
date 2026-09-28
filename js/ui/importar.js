@@ -95,7 +95,8 @@ export async function render(el) {
           <label class="check check-chico"><input type="checkbox" data-ignorar="${i}" ${f.ignorar ? 'checked' : ''}> Ignorar esta fila</label>
         </div>
         <div class="detalle">${resumenFila(f)}</div>
-        ${duplicado ? '<div class="aviso-chico">Posible duplicado: ya hay un movimiento con la misma fecha, categoría y monto.</div>' : ''}
+        ${f.ejemplo ? '<div class="aviso-chico">Fila de ejemplo de la plantilla: no se importa.</div>' : ''}
+        ${duplicado && !f.ejemplo ? '<div class="aviso-chico">Posible duplicado: ya hay un movimiento con la misma fecha, categoría y monto.</div>' : ''}
         ${!f.ignorar && errores.length ? `<ul class="lista-errores">${errores.map((e) => `<li>${esc(e.mensaje)}</li>`).join('')}</ul>${editor(f, i)}` : ''}
       </div>`;
   };

@@ -1,5 +1,7 @@
 // CSV compatible con Excel en español: separador ';', coma decimal, UTF-8 con BOM.
 
+import { descargar } from './dom.js';
+
 const SEPARADOR = ';';
 
 function celda(valor) {
@@ -18,17 +20,9 @@ export function generarCSV(encabezados, filas) {
   return [encabezados, ...filas].map((f) => f.map(celda).join(SEPARADOR)).join('\r\n');
 }
 
-// Dispara la descarga de un CSV.
+// Dispara la descarga de un CSV (con BOM para que Excel detecte UTF-8).
 export function descargarCSV(nombre, contenido) {
-  const blob = new Blob(['﻿' + contenido], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nombre;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  descargar(nombre, new Blob(['﻿' + contenido], { type: 'text/csv;charset=utf-8' }));
 }
 
 // Parsea texto CSV. Detecta el separador (';', ',' o tab) mirando la primera línea.

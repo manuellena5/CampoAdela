@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.1 — 2026-09-28 — Plantilla Excel y formulario
+- La plantilla de importación ahora es un Excel (.xlsx) con dos pestañas:
+  **Instrucciones** (pasos, qué va en cada columna, valores posibles, categorías/subcategorías, campañas y
+  quién pagó) y **Movimientos** (tabla de Excel con filtros, encabezado fijo, formatos de fecha y número,
+  listas desplegables y 3 filas de ejemplo).
+- La importación lee .xlsx directamente (y sigue aceptando CSV). Las filas de ejemplo ("EJEMPLO" en
+  Descripción) se ignoran solas. Fechas y números de Excel se convierten.
+- Categorías con el mismo nombre como gasto y como ingreso ("Otros") se distinguen como
+  "Otros (gasto)" / "Otros (ingreso)"; si viene solo "Otros", la fila pide elegir.
+- Formulario de movimiento: Descripción pasa a estar entre Fecha y Categoría.
+- `js/lib/zip.js` y `js/lib/xlsx.js`: generar y leer .xlsx sin librerías externas.
+
 ## 0.7.0 — 2026-09-28 — Fase 7: migración y extras
 - **Importar movimientos** (Configuración): descargar plantilla CSV (con filas de ayuda y valores válidos),
   completarla en Excel y elegir el archivo. Pantalla de revisión con los errores de cada fila: se pueden

@@ -89,14 +89,14 @@ export async function render(el) {
       <h2>Importar movimientos</h2>
       <div class="tarjeta">
         <p class="detalle" style="margin-top:0">
-          1. Descargá la plantilla y completala en Excel (una fila por movimiento).<br>
-          2. Guardala como CSV y elegila acá. Antes de guardar vas a poder revisar y corregir los errores.
+          1. Descargá la plantilla Excel: trae una pestaña con las instrucciones y otra para cargar los movimientos.<br>
+          2. Completala y elegila acá (.xlsx o .csv). Antes de guardar vas a poder revisar y corregir los errores.
         </p>
         <div class="acciones">
           <button type="button" class="btn" id="descargar-plantilla">Descargar plantilla</button>
           <label class="btn btn-primario" for="archivo-import">Elegir archivo…</label>
         </div>
-        <input type="file" id="archivo-import" accept=".csv,text/csv,text/plain" hidden>
+        <input type="file" id="archivo-import" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden>
       </div>
 
       <h2>Aplicación</h2>
@@ -159,12 +159,8 @@ export async function render(el) {
     const archivo = e.target.files[0];
     e.target.value = ''; // permite volver a elegir el mismo archivo
     if (!archivo) return;
-    if (/\.xlsx?$/i.test(archivo.name)) {
-      toast('Guardá la planilla como CSV (Archivo → Guardar como → CSV) y elegí ese archivo.', 6000);
-      return;
-    }
     const catalogos = await cargarCatalogos();
-    const { filas, error } = leerArchivo(await archivo.text(), catalogos);
+    const { filas, error } = await leerArchivo(archivo, catalogos);
     if (error) { toast(error, 6000); return; }
     iniciarRevision(filas, catalogos, archivo.name);
     navegar('/importar');

@@ -15,6 +15,18 @@ export function $$(selector, raiz = document) {
   return [...raiz.querySelectorAll(selector)];
 }
 
+// Dispara la descarga de un Blob con el nombre dado.
+export function descargar(nombre, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 let timerToast;
 export function toast(mensaje, ms = 2500) {
   const el = document.getElementById('toast');

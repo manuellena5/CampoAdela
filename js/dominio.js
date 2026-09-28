@@ -33,6 +33,15 @@ export function campanaParaFecha(campanas, fecha) {
   return candidatas[0] || null;
 }
 
+const normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+// Nombre de categoría para planillas: si hay una de gasto y otra de ingreso con el mismo nombre
+// (p. ej. "Otros"), se aclara el tipo: "Otros (gasto)" / "Otros (ingreso)".
+export function etiquetaCategoria(c, categorias) {
+  const repetida = categorias.some((o) => o.id !== c.id && o.tipo !== c.tipo && normalizar(o.nombre) === normalizar(c.nombre));
+  return repetida ? `${c.nombre} (${c.tipo})` : c.nombre;
+}
+
 // Completa campos derivados que no viajan al Sheet (se calculan localmente).
 export function normalizarMovimiento(m) {
   return { ...m, periodo: periodoDe(m.fecha) };

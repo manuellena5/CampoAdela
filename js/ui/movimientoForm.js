@@ -49,7 +49,7 @@ export async function render(el, { id } = {}, plantilla = null) {
     { id: PAGO_CAJA, nombre: 'Caja común' },
     ...hermanos.filter((h) => h.activo || h.id === m.pagoId).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
   ];
-  const masDatosAbierto = Boolean(m.descripcion || m.proveedor || m.quintales || m.precioQq);
+  const masDatosAbierto = Boolean(m.proveedor || m.quintales || m.precioQq);
 
   el.innerHTML = `
     <div class="form-centrado">
@@ -58,6 +58,11 @@ export async function render(el, { id } = {}, plantilla = null) {
         <div class="campo">
           <label for="m-fecha">Fecha</label>
           <input id="m-fecha" name="fecha" type="date" required value="${esc(m.fecha)}">
+        </div>
+
+        <div class="campo">
+          <label for="m-desc">Descripción</label>
+          <input id="m-desc" name="descripcion" placeholder="Ej.: Semilla soja, 2da pasada de herbicida…" value="${esc(m.descripcion)}">
         </div>
 
         <div class="campo">
@@ -124,10 +129,6 @@ export async function render(el, { id } = {}, plantilla = null) {
 
         <details class="mas-datos" ${masDatosAbierto ? 'open' : ''}>
           <summary>Más datos</summary>
-          <div class="campo">
-            <label for="m-desc">Descripción</label>
-            <input id="m-desc" name="descripcion" value="${esc(m.descripcion)}">
-          </div>
           <div class="campo">
             <label for="m-prov">Proveedor</label>
             <input id="m-prov" name="proveedor" placeholder="Contratista, agronomía, acopio, comprador…" value="${esc(m.proveedor)}">
@@ -359,5 +360,6 @@ export async function render(el, { id } = {}, plantilla = null) {
   mostrarCotizacion();
   mostrarComprobante();
   if (!existente) buscarCotizacion();
-  if (!existente) campo('categoriaId').focus();
+  // En notebook se arranca escribiendo; en el celular no (abriría el teclado encima del formulario).
+  if (!existente && matchMedia('(pointer: fine)').matches) campo('descripcion').focus();
 }
