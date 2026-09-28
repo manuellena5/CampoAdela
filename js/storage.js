@@ -4,7 +4,7 @@
 // Offline: los archivos quedan en la tabla `archivos` (IndexedDB) y se suben al sincronizar.
 
 import { db, actualizar } from './db.js';
-import { llamar, mensajeError } from './api.js';
+import { llamar } from './api.js';
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const LADO_MAX_IMAGEN = 1600; // px: las fotos del celular se achican antes de subir
@@ -75,7 +75,8 @@ export async function quitarDeCola(movimientoId) {
   await db.archivos.where('movimientoId').equals(movimientoId).delete();
 }
 
-// Sube lo que haya en cola. Devuelve { subidos, error } (el primer error corta la cola; se reintenta luego).
+// Sube lo que haya en cola. Devuelve { subidos, error } con el Error original
+// (el primer error corta la cola; se reintenta en el próximo sync).
 export async function procesarCola() {
   let subidos = 0;
   for (const item of await db.archivos.toArray()) {
@@ -88,8 +89,7 @@ export async function procesarCola() {
       await db.archivos.delete(item.id);
       subidos++;
     } catch (err) {
-      console.warn('No se pudo subir el comprobante', err);
-      return { subidos, error: mensajeError(err) };
+      return { subidos, error: err };
     }
   }
   return { subidos, error: null };

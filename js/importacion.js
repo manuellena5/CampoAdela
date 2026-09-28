@@ -10,6 +10,7 @@ import { generarXlsx, leerXlsx, fechaDeSerial } from './lib/xlsx.js';
 import { construirPlantilla, HOJA_DATOS, MARCA_EJEMPLO } from './plantilla.js';
 import { descargar } from './lib/dom.js';
 import { parsearMonto, hoyISO } from './lib/formato.js';
+import { ErrorValidacion, registrarError } from './errores.js';
 
 // Títulos de columna para los mensajes de error.
 const TITULOS = { fecha: 'Fecha', categoria: 'Categoría', monto: 'Monto' };
@@ -90,13 +91,13 @@ async function matrizDeArchivo(archivo) {
   const firma = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
   const esZip = firma[0] === 0x50 && firma[1] === 0x4b; // "PK"
   if (!esZip) {
-    if (/\.xls$/i.test(archivo.name)) throw new Error('El formato .xls (Excel viejo) no se puede leer. Guardalo como .xlsx.');
+    if (/\.xls$/i.test(archivo.name)) throw new ErrorValidacion('El formato .xls (Excel viejo) no se puede leer. Guardalo como .xlsx.');
     return parsearCSV(new TextDecoder().decode(buffer));
   }
   const hojas = await leerXlsx(buffer);
   const conEncabezados = hojas.filter((h) => h.filas.slice(0, 10).some(esEncabezado));
   const hoja = conEncabezados.find((h) => norm(h.nombre) === norm(HOJA_DATOS)) || conEncabezados[0];
-  if (!hoja) throw new Error(`No encontré la pestaña "${HOJA_DATOS}" con los encabezados (Fecha, Monto…). Usá la plantilla.`);
+  if (!hoja) throw new ErrorValidacion(`No encontré la pestaña "${HOJA_DATOS}" con los encabezados (Fecha, Monto…). Usá la plantilla.`);
   return hoja.filas;
 }
 
@@ -109,7 +110,10 @@ export async function leerArchivo(archivo, cat) {
   try {
     matriz = await matrizDeArchivo(archivo);
   } catch (err) {
-    return { error: err.message };
+    if (err instanceof ErrorValidacion) return { error: err.message };
+    // Archivo dañado o que no es una planilla: el detalle técnico va al log, al usuario un mensaje claro.
+    await registrarError(err, { accion: 'leer archivo de importación', datos: { nombre: archivo.name, tamano: archivo.size } }, 'advertencia');
+    return { error: 'No se pudo leer el archivo. Verificá que sea la plantilla guardada como .xlsx (o un .csv).' };
   }
   const iEnc = matriz.slice(0, 10).findIndex((f) => f && esEncabezado(f));
   if (iEnc < 0) return { error: 'No encontré la fila de encabezados (Fecha, Categoría, Monto…). Usá la plantilla descargada.' };

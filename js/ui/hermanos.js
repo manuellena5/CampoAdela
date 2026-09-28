@@ -47,7 +47,7 @@ async function editar(hermano, todos) {
       <label class="check"><input type="checkbox" name="activo" ${hermano?.activo === false ? '' : 'checked'}> Activo</label>`,
     botones: [{ accion: 'guardar', texto: 'Guardar', clase: 'btn-primario' }],
     validar: (_, d) => (todos.some((h) => h.id !== hermano?.id && h.nombre.toLowerCase() === d.nombre.trim().toLowerCase())
-      ? 'Ya existe un hermano con ese nombre.' : null),
+      ? { campo: 'nombre', mensaje: 'Ya existe un hermano con ese nombre.' } : null),
   });
   if (!res) return false;
   const datos = { nombre: res.datos.nombre.trim(), activo: res.datos.activo === 'on' };

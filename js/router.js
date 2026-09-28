@@ -16,8 +16,10 @@ import * as configuracion from './ui/configuracion.js';
 import * as resumen from './ui/resumen.js';
 import * as cuentas from './ui/cuentas.js';
 import * as importar from './ui/importar.js';
+import * as registroErrores from './ui/registroErrores.js';
 import { configuracionCompleta } from './ajustes.js';
-import { toast } from './lib/dom.js';
+import { registrarError } from './errores.js';
+import { toast, esc } from './lib/dom.js';
 
 // `nav` = qué ítem de la barra de navegación se marca como activo.
 // `libre` = accesible aunque falte usuario/clave.
@@ -34,6 +36,7 @@ const RUTAS = [
   { patron: /^\/hermanos$/, vista: hermanos, nav: 'hermanos' },
   { patron: /^\/mas$/, vista: mas, nav: 'mas', libre: true },
   { patron: /^\/configuracion$/, vista: configuracion, nav: 'configuracion', libre: true },
+  { patron: /^\/config\/errores(?:\/(\d+))?$/, vista: registroErrores, nav: 'configuracion', params: ['id'], libre: true },
 ];
 
 const RUTA_INICIAL = '/movimientos';
@@ -75,7 +78,7 @@ async function resolver(ruta = rutaDelHash()) {
   if (esPrincipal(ruta)) origen = ruta;
 
   const params = {};
-  (def.params || []).forEach((nombre, i) => { params[nombre] = decodeURIComponent(match[i + 1]); });
+  (def.params || []).forEach((nombre, i) => { if (match[i + 1] !== undefined) params[nombre] = decodeURIComponent(match[i + 1]); });
 
   // En celular, Resumen/Cuentas/Categorías/Hermanos/Configuración cuelgan de "Más".
   const bajoMas = ['resumen', 'cuentas', 'categorias', 'hermanos', 'configuracion'].includes(def.nav);
@@ -85,15 +88,53 @@ async function resolver(ruta = rutaDelHash()) {
 
   const contenedor = document.getElementById('vista');
   contenedor.innerHTML = '';
+  contenedor.onclick = null;
+  contenedor.onchange = null;
+  contenedor.onkeydown = null;
   window.scrollTo(0, 0);
-  await def.vista.render(contenedor, params);
+  window.dispatchEvent(new CustomEvent('ruta-cambiada', { detail: { ruta } }));
+  try {
+    await def.vista.render(contenedor, params);
+  } catch (err) {
+    await vistaDeError(contenedor, err, ruta);
+  }
+}
+
+// Una vista que falla al dibujarse no deja la pantalla en blanco.
+async function vistaDeError(contenedor, err, ruta) {
+  const { codigo, mensaje, id } = await registrarError(err, { accion: `abrir ${ruta}` });
+  // Si la que falla es la pantalla de inicio, "volver al inicio" la volvería a abrir: se va a Configuración.
+  const destino = ruta === RUTA_INICIAL ? '/configuracion' : RUTA_INICIAL;
+  contenedor.onclick = null;
+  contenedor.innerHTML = `
+    <div class="form-centrado">
+      <div class="tarjeta vista-error">
+        <div class="vista-error-icono" aria-hidden="true">⚠</div>
+        <h1>No se pudo abrir esta pantalla</h1>
+        <p>${esc(mensaje)}</p>
+        <p class="detalle">Código: <strong>${esc(codigo)}</strong>${id ? ` · Registro #${id}` : ''}</p>
+        <div class="acciones">
+          <button type="button" class="btn btn-primario" data-error="inicio">${destino === RUTA_INICIAL ? 'Volver al inicio' : 'Ir a Configuración'}</button>
+          ${id ? '<button type="button" class="btn" data-error="detalle">Ver detalle</button>' : ''}
+        </div>
+      </div>
+    </div>`;
+  contenedor.onclick = (e) => {
+    const accion = e.target.closest('[data-error]')?.dataset.error;
+    if (accion === 'inicio') navegar(destino);
+    if (accion === 'detalle') navegar(`/config/errores/${id}`);
+  };
 }
 
 // Vuelve a dibujar la vista actual (p. ej. cuando llegan datos de la sincronización).
-// No interrumpe un diálogo abierto ni la pantalla de Configuración (puede haber algo a medio escribir).
-export function refrescar() {
-  if (document.querySelector('dialog[open]')) return;
-  if (!rutaMostrada || rutaMostrada === '/configuracion') return;
+// No interrumpe un diálogo abierto ni la pantalla de Configuración (puede haber algo a medio escribir),
+// salvo `forzar` (p. ej. "Reintentar" después de un error).
+export function refrescar(forzar = false) {
+  if (!rutaMostrada) return;
+  if (!forzar) {
+    if (document.querySelector('dialog[open]:not(.panel-sync)')) return;
+    if (rutaMostrada === '/configuracion') return;
+  }
   resolver(rutaMostrada);
 }
 
@@ -101,7 +142,9 @@ export function refrescar() {
 function alVolver() {
   const dialogo = document.querySelector('dialog[open]');
   if (dialogo) {
-    dialogo.close();
+    // 'cancel' primero: los diálogos de la app lo atienden en el momento ('close' puede demorarse).
+    dialogo.dispatchEvent(new Event('cancel'));
+    if (dialogo.open) dialogo.close();
     history.pushState(ACTUAL, '', `#${rutaMostrada}`);
     return;
   }

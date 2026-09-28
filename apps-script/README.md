@@ -55,6 +55,28 @@ Pegar el `Code.gs` nuevo, guardar. Si la versión nueva usa un servicio de Googl
 Versión: **Nueva versión** → Implementar*. Así **la URL no cambia**.
 (Si se hace *Nueva implementación*, se genera otra URL y hay que cambiarla en la app.)
 
+## Acciones del script
+
+| Acción | Qué hace |
+|---|---|
+| `init` | Crea las pestañas y encabezados que falten y carga los datos iniciales. |
+| `push` | Recibe registros (`{ entidad: [...] }`), hace upsert por `id` y gana el `modificado` más reciente. La app manda lotes de 100. |
+| `pull` | Devuelve los registros con `syncTs > desde`. Con `limite` es **paginado**: `{ desde, limite, cursor }` → `{ registros, hayMas, cursor, totalPendiente, syncTs }`. Sin `limite` responde el formato anterior (`entidades`). |
+| `log` | Agrega el log de errores de la app a la pestaña **Errores**, que se crea sola. Es solo append: si un error se repitió después de subirse, llega de nuevo con el mismo `uid` y el total de repeticiones. |
+| `subirComprobante` | Guarda una foto o PDF en la carpeta de Drive `CARPETA_COMPROBANTES`. |
+
+La versión 0.9.0 de la app necesita el `Code.gs` nuevo (acciones `log` y `pull` paginado): pegalo y publicá una **nueva versión** (ver "Actualizar el código del script"). Mientras no lo actualices, la sincronización sigue funcionando: la app entiende las dos respuestas de `pull` y, si `log` no existe, reintenta en el próximo sync.
+
+## Pestaña "Errores"
+
+Una fila por error registrado en cualquiera de los dispositivos. Columnas:
+- `fecha`, `ultimaVez`, `usuario` (nombre del hermano), `nivel`, `codigo`;
+- `mensajeUsuario` (lo que vio el usuario) y `mensajeTecnico`;
+- `pantalla`, `accion`, `datos`;
+- `version`, `online`, `userAgent`, `repeticiones`, `stack`, `uid` y `recibido` (cuándo llegó al Sheet).
+
+Nunca incluye la clave ni el contenido de los requests. Se puede filtrar u ordenar libremente; la app solo agrega filas.
+
 ## Reglas del Sheet
 
 - **Fila 1 = encabezados.** El script ubica las columnas por nombre: se pueden reordenar o agregar columnas propias.

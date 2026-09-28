@@ -4,7 +4,9 @@
  * POST { clave, accion, datos }  →  { ok, error?, datos? }
  *   accion 'init' : crea pestañas/encabezados faltantes y carga el seed.
  *   accion 'push' : datos = { entidad: [registros] }. Upsert por id; gana el `modificado` más reciente.
- *   accion 'pull' : datos = { desde: syncTs }. Devuelve registros con syncTs > desde.
+ *   accion 'pull' : datos = { desde, limite?, cursor? }. Registros con syncTs > desde, paginados si viene `limite`.
+ *   accion 'log'  : datos = { entradas: [...] }. Agrega el log de errores de la app a la pestaña "Errores".
+ *   accion 'subirComprobante': foto/PDF a la carpeta de Drive (Script Property CARPETA_COMPROBANTES).
  *
  * Se copia a mano al editor de Apps Script (ver README.md en esta carpeta).
  */
@@ -75,7 +77,7 @@ function doPost(e) {
       return responder({ ok: true, datos: accionSubirComprobante(pedido.datos || {}) });
     }
 
-    var acciones = { init: accionInit, push: accionPush, pull: accionPull };
+    var acciones = { init: accionInit, push: accionPush, pull: accionPull, log: accionLog };
     var accion = acciones[pedido.accion];
     if (!accion) return responder({ ok: false, error: 'Acción desconocida: ' + pedido.accion });
 
@@ -142,9 +144,57 @@ function accionPush(datos) {
   return { aceptados: aceptados, rechazados: rechazados, syncTs: ahora };
 }
 
+// Sin `limite`: formato anterior (todo junto en `entidades`), para apps que todavía no se actualizaron.
+// Con `limite`: paginado. datos = { desde, limite, cursor } → { registros, hayMas, cursor, totalPendiente, syncTs }.
+//   El cursor fija `hasta` (momento de la primera página) y la posición (pestaña, fila): las filas nunca se
+//   borran ni se mueven, así que la paginación es estable. Lo que cambie durante la paginación queda con
+//   syncTs > hasta y se trae en el próximo sync (el cliente guarda syncTs = hasta - margen).
 function accionPull(datos) {
   asegurarHojas();
   var desde = Number(datos.desde) || 0;
+  if (!datos.limite) return pullCompleto(desde);
+
+  var limite = Math.min(Math.max(Number(datos.limite) || 500, 1), 2000);
+  var cursor = leerCursor(datos.cursor);
+  var hasta = cursor ? cursor.hasta : Date.now();
+  var registros = {};
+  var cantidad = 0;
+  var total = 0;
+  var siguiente = null;
+
+  ORDEN_ENTIDADES.forEach(function (entidad, e) {
+    var t = abrirTabla(entidad);
+    t.filas.forEach(function (fila, f) {
+      var ts = Number(fila[t.col.syncTs]) || 0;
+      if (ts <= desde || ts > hasta) return;
+      total++;
+      if (cursor && (e < cursor.entidad || (e === cursor.entidad && f < cursor.fila))) return; // ya enviado
+      if (cantidad < limite) {
+        (registros[entidad] = registros[entidad] || []).push(filaAObjeto(entidad, t.col, fila));
+        cantidad++;
+      } else if (!siguiente) {
+        siguiente = { entidad: e, fila: f };
+      }
+    });
+  });
+
+  return {
+    registros: registros,
+    hayMas: Boolean(siguiente),
+    cursor: siguiente ? [hasta, siguiente.entidad, siguiente.fila].join('|') : null,
+    totalPendiente: total,
+    syncTs: hasta - MARGEN_PULL_MS,
+  };
+}
+
+function leerCursor(texto) {
+  if (!texto) return null;
+  var partes = String(texto).split('|').map(Number);
+  if (partes.length !== 3 || partes.some(isNaN)) throw new Error('Cursor inválido.');
+  return { hasta: partes[0], entidad: partes[1], fila: partes[2] };
+}
+
+function pullCompleto(desde) {
   var ahora = Date.now();
   var entidades = {};
   ORDEN_ENTIDADES.forEach(function (entidad) {
@@ -156,6 +206,69 @@ function accionPull(datos) {
     entidades[entidad] = lista;
   });
   return { entidades: entidades, syncTs: ahora - MARGEN_PULL_MS };
+}
+
+// ---------------------------------------------------------------- Log de errores
+
+var HOJA_ERRORES = 'Errores';
+var COLUMNAS_ERRORES = [
+  'fecha', 'ultimaVez', 'usuario', 'nivel', 'codigo', 'mensajeUsuario', 'mensajeTecnico', 'pantalla', 'accion',
+  'datos', 'version', 'online', 'userAgent', 'repeticiones', 'stack', 'uid', 'recibido',
+];
+var MAX_ENTRADAS_LOG = 500;
+
+// datos = { entradas: [...] } → agrega filas a la pestaña "Errores" (solo append, sin merge).
+// Si una entrada se repitió después de subirse, llega de nuevo con el mismo uid y el total de repeticiones.
+function accionLog(datos) {
+  var entradas = (datos.entradas || []).slice(0, MAX_ENTRADAS_LOG);
+  if (!entradas.length) return { agregadas: 0 };
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = ss.getSheetByName(HOJA_ERRORES);
+  if (!hoja) {
+    hoja = ss.insertSheet(HOJA_ERRORES);
+    hoja.getRange(1, 1, 1, COLUMNAS_ERRORES.length).setValues([COLUMNAS_ERRORES]).setFontWeight('bold');
+    hoja.setFrozenRows(1);
+  }
+  var encabezados = encabezadosDe(hoja);
+  var faltantes = COLUMNAS_ERRORES.filter(function (c) { return encabezados.indexOf(c) < 0; });
+  if (faltantes.length) {
+    if (hoja.getMaxColumns() < encabezados.length + faltantes.length) {
+      hoja.insertColumnsAfter(hoja.getMaxColumns(), encabezados.length + faltantes.length - hoja.getMaxColumns());
+    }
+    hoja.getRange(1, encabezados.length + 1, 1, faltantes.length).setValues([faltantes]).setFontWeight('bold');
+    encabezados = encabezados.concat(faltantes);
+  }
+
+  var hermanos = {};
+  var t = abrirTabla('hermanos');
+  t.filas.forEach(function (f) { hermanos[String(f[t.col.id])] = String(f[t.col.nombre]); });
+  var texto = function (v, max) { v = v === null || v === undefined ? '' : String(v); return v.length > max ? v.slice(0, max) + '…' : v; };
+  var recibido = new Date().toISOString();
+
+  var filas = entradas.map(function (e) {
+    var ctx = e.contexto || {};
+    var valores = {
+      fecha: e.fecha, ultimaVez: e.ultimaVez || e.fecha, usuario: hermanos[e.usuario] || e.usuario || '',
+      nivel: e.nivel, codigo: e.codigo, mensajeUsuario: e.mensajeUsuario, mensajeTecnico: e.mensajeTecnico,
+      pantalla: ctx.pantalla, accion: ctx.accion, datos: ctx.datos ? JSON.stringify(ctx.datos) : '',
+      version: e.version, online: e.online ? 'sí' : 'no', userAgent: e.userAgent,
+      repeticiones: Number(e.repeticiones) || 1, stack: e.stack, uid: e.uid, recibido: recibido,
+    };
+    return encabezados.map(function (h) {
+      if (!(h in valores)) return '';
+      return h === 'repeticiones' ? valores[h] : texto(valores[h], 2000);
+    });
+  });
+
+  var desde = Math.max(hoja.getLastRow(), 1) + 1;
+  var necesarias = desde + filas.length - 1 - hoja.getMaxRows();
+  if (necesarias > 0) hoja.insertRowsAfter(hoja.getMaxRows(), necesarias);
+  var rango = hoja.getRange(desde, 1, filas.length, encabezados.length);
+  rango.setNumberFormats(filas.map(function () {
+    return encabezados.map(function (h) { return h === 'repeticiones' ? 'General' : '@'; });
+  }));
+  rango.setValues(filas);
+  return { agregadas: filas.length };
 }
 
 // ---------------------------------------------------------------- Comprobantes (Drive)

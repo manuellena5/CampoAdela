@@ -9,6 +9,7 @@ import { db, actualizar } from './db.js';
 import * as ajustes from './ajustes.js';
 import { hoyISO, fechaAR } from './lib/formato.js';
 import { calcularMontos } from './dominio.js';
+import { ErrorCotizacion, notificarError } from './errores.js';
 
 const CASA = { MEP: 'bolsa', OFICIAL: 'oficial' };
 const TIMEOUT_MS = 12000;
@@ -17,10 +18,20 @@ const REFRESCO_FERIADOS_MS = 7 * 24 * 3600 * 1000;
 export const TIPOS_DOLAR = [['MEP', 'MEP'], ['OFICIAL', 'Oficial']];
 
 async function getJSON(url) {
-  const resp = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const servicio = new URL(url).hostname;
+  let resp;
+  try {
+    resp = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (err) {
+    throw new ErrorCotizacion(`${servicio}: sin respuesta`, { causa: err });
+  }
   if (resp.status === 404) return null;
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
+  if (!resp.ok) throw new ErrorCotizacion(`${servicio}: HTTP ${resp.status}`);
+  try {
+    return await resp.json();
+  } catch (err) {
+    throw new ErrorCotizacion(`${servicio}: respuesta inválida`, { causa: err });
+  }
 }
 
 // ---- Fechas (texto YYYY-MM-DD, sin zona horaria)
@@ -81,7 +92,7 @@ export async function ultimaConocida(tipo) {
 
 async function deApiHoy(tipo) {
   const r = await getJSON(`https://dolarapi.com/v1/dolares/${CASA[tipo]}`);
-  if (!r || !(r.venta > 0)) throw new Error('Cotización no disponible');
+  if (!r || !(r.venta > 0)) throw new ErrorCotizacion('dolarapi: sin valor de venta');
   return { valor: r.venta, fechaReal: r.fechaActualizacion ? fechaAR(r.fechaActualizacion) : hoyISO() };
 }
 
@@ -93,7 +104,7 @@ async function deApiHistorica(tipo, fecha) {
     if (r && r.venta > 0) return { valor: r.venta, fechaReal: d };
     d = await ultimoDiaHabil(diaAnterior(d));
   }
-  throw new Error('Cotización no disponible');
+  throw new ErrorCotizacion('argentinadatos: sin cotización en los últimos días');
 }
 
 /**
@@ -115,7 +126,9 @@ export async function obtenerCotizacion(tipo, fecha) {
       await guardarCache(tipo, clave, valor, fechaReal);
       return { tc: valor, tcFecha: fechaReal, tcEstado: 'api' };
     } catch (err) {
-      console.warn('No se pudo obtener la cotización', err);
+      // Con conexión pero la API falló: se avisa (E-DOLAR) y se sigue con la última disponible.
+      const error = err instanceof ErrorCotizacion ? err : new ErrorCotizacion('Cotización no disponible', { causa: err });
+      notificarError(error, { accion: 'obtener cotización', datos: { tipo, fecha } }, { nivel: 'advertencia' });
     }
   }
 

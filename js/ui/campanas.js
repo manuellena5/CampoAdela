@@ -118,11 +118,11 @@ async function editar(campana, todas) {
       if (accion === 'borrar') {
         return usos ? `Tiene ${usos} movimiento(s) asociados: no se puede borrar. Podés marcarla como cerrada.` : null;
       }
-      if (d.fechaInicio && d.fechaFin && d.fechaFin < d.fechaInicio) return 'La fecha de fin es anterior a la de inicio.';
+      if (d.fechaInicio && d.fechaFin && d.fechaFin < d.fechaInicio) return { campo: 'fechaFin', mensaje: 'La fecha de fin es anterior a la de inicio.' };
       const ha = parsearMonto(d.hectareas);
-      if (!(ha > 0)) return 'Las hectáreas tienen que ser un número mayor a 0.';
+      if (!(ha > 0)) return { campo: 'hectareas', mensaje: 'Las hectáreas tienen que ser un número mayor a 0.' };
       if (todas.some((c) => c.id !== campana?.id && c.nombre.trim().toLowerCase() === d.nombre.trim().toLowerCase())) {
-        return 'Ya existe una campaña con ese nombre.';
+        return { campo: 'nombre', mensaje: 'Ya existe una campaña con ese nombre.' };
       }
       return null;
     },

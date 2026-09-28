@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.9.0 — 2026-09-28 — Manejo de errores y panel de sincronización
+- **Errores con mensajes amigables** (`js/errores.js`): códigos E-RED, E-CLAVE, E-SRV, E-DOLAR, E-DB, E-VAL y E-GEN,
+  con acción cuando corresponde (Ir a Configuración / Reintentar). Nunca se muestra el stack, JSON crudo
+  ni mensajes técnicos. Captura global (errores y promesas sin manejar), del Service Worker, de la API,
+  del sync, de las cotizaciones y de las escrituras en la base.
+- Si una pantalla falla al abrirse, se muestra una vista de error con "Volver al inicio" (no queda en blanco).
+- Validaciones (E-VAL) junto a cada campo: formulario de movimientos, Configuración y diálogos de ABM.
+- Guardar sin conexión avisa (E-RED) y al volver la conexión se sincroniza solo.
+- **Toasts** nuevos: info, éxito, advertencia y error; los de error quedan hasta cerrarlos y tienen
+  "Ver detalle"; máximo 3 a la vez; los repetidos se agrupan ("×3").
+- **Log de errores** (tabla `logErrores`, Dexie v3): agrupa repeticiones en menos de 1 minuto, guarda las
+  últimas 500, fallback en localStorage si falla la base. Se sube en cada sync a la pestaña "Errores" del Sheet
+  (acción `log` en `Code.gs`).
+- **Registro de errores** en Configuración (`#/config/errores`): filtro por nivel, detalle técnico, copiar,
+  exportar .txt y borrar. Badge con los errores nuevos.
+- **Panel de sincronización** (tocando el indicador): etapa y barra de progreso, pendientes por entidad,
+  resultado del último sync (enviados; recibidos nuevos/modificados/borrados por entidad), último error e
+  historial de los últimos 10 (tabla `historialSync`).
+- Sync con progreso real: push en lotes de 100 y **pull paginado** de a 500 (`Code.gs` acepta `limite` y `cursor`;
+  sigue respondiendo el formato anterior sin `limite`). Nunca corren dos syncs a la vez.
+- Aviso de lo que cargaron otros: "Llegaron 3 movimientos nuevos (2 de Martin, 1 de Manuel)".
+- Indicador del header compacto con ícono, texto corto y un color por estado ("Al día", "3 pendientes",
+  "Sin conexión", "Sincronizando 45%", "Error", "Sin configurar").
+- **Requiere actualizar el Apps Script** (nueva versión de la implementación) para el log y el pull paginado.
+
 ## 0.8.0 — 2026-09-28 — Navegación y orden
 - Botón "atrás": desde cualquier pantalla secundaria vuelve a la pantalla principal desde la que se llegó
   (Movimientos, Nuevo, Campañas o Más), sin acumular historial. En una principal, el primer "atrás"

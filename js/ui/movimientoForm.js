@@ -4,7 +4,7 @@ import { db, listar, crear, actualizar, borrar } from '../db.js';
 import * as ajustes from '../ajustes.js';
 import { obtenerCotizacion, TIPOS_DOLAR } from '../dolar.js';
 import { PAGO_CAJA, calcularMontos, campanaParaFecha, periodoDe, redondear } from '../dominio.js';
-import { esc, $, toast } from '../lib/dom.js';
+import { esc, $, toast, marcarErrorCampo, limpiarErroresCampos } from '../lib/dom.js';
 import { formatoARS, formatoUSD, formatoFecha, hoyISO, parsearMonto, numeroEditable } from '../lib/formato.js';
 import { navegar } from '../router.js';
 import { TIPOS_ACEPTADOS, validarArchivo, prepararArchivo, encolar, pendienteDe, quitarDeCola } from '../storage.js';
@@ -146,7 +146,6 @@ export async function render(el, { id } = {}, plantilla = null) {
           <button type="button" class="btn btn-bloque" id="m-calcular">Calcular monto = qq × precio</button>
         </details>
 
-        <div class="dialogo-error" id="m-error" hidden></div>
         <div class="acciones acciones-form">
           <button type="submit" class="btn btn-primario" value="guardar">Guardar</button>
           ${existente
@@ -299,9 +298,6 @@ export async function render(el, { id } = {}, plantilla = null) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const accion = e.submitter?.value || 'guardar';
-    const error = $('#m-error', el);
-    const mostrarError = (msg) => { error.textContent = msg; error.hidden = false; };
-    error.hidden = true;
 
     const fecha = campo('fecha').value;
     const montoOriginal = parsearMonto(campo('montoOriginal').value);
@@ -311,10 +307,26 @@ export async function render(el, { id } = {}, plantilla = null) {
       return Number.isFinite(n) ? n : null;
     };
 
-    if (!fecha) return mostrarError('Elegí la fecha.');
-    if (!campo('categoriaId').value) return mostrarError('Elegí una categoría.');
-    if (!(montoOriginal > 0)) return mostrarError('El monto tiene que ser mayor a 0.');
-    if (!(tc > 0)) return mostrarError('Falta la cotización del dólar (TC).');
+    // Validación (E-VAL): cada mensaje junto a su campo, no como toast.
+    limpiarErroresCampos(form);
+    const errores = [];
+    const invalido = (control, mensaje) => { marcarErrorCampo(control, mensaje); errores.push(control); };
+    if (!fecha) invalido(campo('fecha'), 'Elegí la fecha.');
+    if (!campo('categoriaId').value) invalido(campo('categoriaId'), 'Elegí una categoría.');
+    if (!(montoOriginal > 0)) {
+      invalido(campo('montoOriginal'), campo('montoOriginal').value.trim() ? 'El monto tiene que ser un número mayor a 0.' : 'Cargá el monto.');
+    }
+    if (!(tc > 0)) invalido(campo('tc'), 'Falta la cotización del dólar (TC).');
+    for (const [nombre, texto] of [['quintales', 'Quintales'], ['precioQq', 'Precio por qq']]) {
+      if (campo(nombre).value.trim() && !(opcional(nombre) >= 0)) {
+        $('.mas-datos', el).open = true;
+        invalido(campo(nombre), `${texto}: tiene que ser un número.`);
+      }
+    }
+    if (errores.length) {
+      errores[0].focus();
+      return;
+    }
 
     const moneda = valorRadio('moneda');
     const datos = {

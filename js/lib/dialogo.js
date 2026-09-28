@@ -4,10 +4,11 @@
 // abrirDialogo({
 //   titulo, cuerpo: '<html de campos>',
 //   botones: [{ accion: 'guardar', texto: 'Guardar', clase: 'btn-primario' }, …],
-//   validar: (accion, datos) => 'mensaje de error' | null,
+//   validar: (accion, datos) => null | 'mensaje general' | { campo, mensaje } | [{ campo, mensaje }, …],
 // })
+// Los errores con `campo` (el name del input) se muestran junto a ese campo (E-VAL); los generales, abajo.
 
-import { esc } from './dom.js';
+import { esc, marcarErrorCampo, limpiarErroresCampos } from './dom.js';
 
 export function abrirDialogo({ titulo, cuerpo, botones = [], validar }) {
   return new Promise((resolve) => {
@@ -44,12 +45,34 @@ export function abrirDialogo({ titulo, cuerpo, botones = [], validar }) {
       const accion = e.submitter?.value || botones[0]?.accion || 'cancelar';
       if (accion === 'cancelar') return terminar(null);
       const datos = Object.fromEntries(new FormData(form));
-      // Validación nativa solo al guardar (no al borrar).
-      let mensaje = accion === 'guardar' && !form.checkValidity() ? 'Completá los campos obligatorios.' : null;
-      mensaje = mensaje || validar?.(accion, datos) || null;
-      if (mensaje) {
-        error.textContent = mensaje;
-        error.hidden = false;
+      limpiarErroresCampos(form);
+      error.hidden = true;
+
+      // Obligatorios (solo al guardar, no al borrar) y validación propia.
+      const problemas = [];
+      if (accion === 'guardar') {
+        form.querySelectorAll('[required]').forEach((c) => {
+          if (!c.checkValidity()) problemas.push({ campo: c.name, mensaje: 'Este dato es obligatorio.' });
+        });
+      }
+      if (!problemas.length) {
+        const r = validar?.(accion, datos);
+        if (r) problemas.push(...(Array.isArray(r) ? r : [typeof r === 'string' ? { mensaje: r } : r]));
+      }
+      if (problemas.length) {
+        let primero = null;
+        for (const p of problemas) {
+          const control = p.campo && form.elements[p.campo];
+          const elemento = control instanceof RadioNodeList ? control[0] : control;
+          if (elemento) {
+            marcarErrorCampo(elemento, p.mensaje);
+            primero ??= elemento;
+          } else {
+            error.textContent = p.mensaje;
+            error.hidden = false;
+          }
+        }
+        primero?.focus();
         return;
       }
       terminar({ accion, datos });

@@ -1,6 +1,7 @@
 // Registro del Service Worker y detección de nuevas versiones.
 
 import { APP_VERSION } from './config.js';
+import { registrarError } from './errores.js';
 
 let versionRemota = null;
 
@@ -22,8 +23,21 @@ function leerIntento() {
 export function registrarSW() {
   if (!('serviceWorker' in navigator)) return;
   // La versión va en la URL: un cambio de versión instala un SW nuevo con su propio cache.
-  navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`).catch((err) => {
-    console.warn('No se pudo registrar el Service Worker', err);
+  navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`)
+    .then((reg) => vigilarInstalacion(reg))
+    .catch((err) => registrarError(err, { accion: 'registrar el Service Worker' }, 'advertencia'));
+}
+
+// Registra en el log si una versión nueva del SW no se pudo instalar (p. ej. archivos que no bajaron).
+function vigilarInstalacion(reg) {
+  reg.addEventListener('updatefound', () => {
+    const sw = reg.installing;
+    sw?.addEventListener('statechange', () => {
+      if (sw.state === 'redundant') {
+        registrarError(new Error(`No se pudo instalar el Service Worker ${new URL(sw.scriptURL).search}`),
+          { accion: 'instalar actualización' }, 'advertencia');
+      }
+    });
   });
 }
 
@@ -89,7 +103,7 @@ export async function forzarActualizacion() {
       await esperarActivo(reg);
     }
   } catch (err) {
-    console.warn('No se pudo forzar la actualización', err);
+    registrarError(err, { accion: 'forzar actualización' }, 'advertencia');
   }
   location.reload();
 }
@@ -136,7 +150,7 @@ export async function aplicarActualizacion() {
     navigator.serviceWorker.addEventListener('controllerchange', recargar, { once: true });
     worker.postMessage('SKIP_WAITING');
   } catch (err) {
-    console.warn('Error al actualizar', err);
+    registrarError(err, { accion: 'actualizar' }, 'advertencia');
     recargar();
   }
 }

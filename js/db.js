@@ -2,6 +2,7 @@
 // Dexie se carga como script clásico desde /vendor (window.Dexie).
 
 import { SEED } from './seed.js';
+import { comoErrorBaseLocal, recuperarBuffer } from './errores.js';
 
 const { Dexie } = globalThis;
 
@@ -24,6 +25,12 @@ db.version(2).stores({
   archivos: 'id, movimientoId',
 });
 
+// v3: log de errores y resultados de sincronizaciones.
+db.version(3).stores({
+  logErrores: '++id, fecha',
+  historialSync: '++id, fecha',
+});
+
 db.on('populate', async (tx) => {
   await tx.table('hermanos').bulkAdd(SEED.hermanos);
   await tx.table('categorias').bulkAdd(SEED.categorias);
@@ -35,9 +42,23 @@ export const TABLAS_SYNC = ['hermanos', 'categorias', 'subcategorias', 'campanas
 
 // Abre la base, migra los ajustes de la Fase 1 (localStorage) y pide almacenamiento persistente.
 export async function abrirDB() {
-  await db.open();
-  await migrarLocalStorage();
+  try {
+    await db.open();
+    await migrarLocalStorage();
+  } catch (err) {
+    throw comoErrorBaseLocal(err, 'abrir');
+  }
+  await recuperarBuffer(); // errores que no se pudieron guardar antes (quedaron en localStorage)
   navigator.storage?.persist?.().catch(() => {});
+}
+
+// Ejecuta una escritura: cualquier falla de IndexedDB sale como ErrorBaseLocal (E-DB).
+async function escribir(accion, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    throw comoErrorBaseLocal(err, accion);
+  }
 }
 
 async function migrarLocalStorage() {
@@ -71,24 +92,28 @@ async function usuarioActual() {
 // Alta: agrega los campos comunes y marca pendiente de sincronizar.
 // `id` opcional (p. ej. para encolar un comprobante antes de crear el movimiento).
 export async function crear(tabla, datos, id = crypto.randomUUID()) {
-  const ahora = new Date().toISOString();
-  const registro = {
-    ...datos,
-    id,
-    creado: ahora,
-    modificado: ahora,
-    cargadoPor: await usuarioActual(),
-    borrado: false,
-    pendiente: true,
-  };
-  await db.table(tabla).add(registro);
+  const registro = await escribir(`guardar en ${tabla}`, async () => {
+    const ahora = new Date().toISOString();
+    const nuevo = {
+      ...datos,
+      id,
+      creado: ahora,
+      modificado: ahora,
+      cargadoPor: await usuarioActual(),
+      borrado: false,
+      pendiente: true,
+    };
+    await db.table(tabla).add(nuevo);
+    return nuevo;
+  });
   notificarCambio();
   return registro;
 }
 
 // Modificación: actualiza `modificado` y marca pendiente.
 export async function actualizar(tabla, id, cambios) {
-  await db.table(tabla).update(id, { ...cambios, modificado: new Date().toISOString(), pendiente: true });
+  await escribir(`actualizar ${tabla}`, () =>
+    db.table(tabla).update(id, { ...cambios, modificado: new Date().toISOString(), pendiente: true }));
   notificarCambio();
 }
 
@@ -114,9 +139,9 @@ export async function mover(tabla, lista, id, delta) {
   const j = i + delta;
   if (i < 0 || j < 0 || j >= ordenada.length) return;
   [ordenada[i], ordenada[j]] = [ordenada[j], ordenada[i]];
-  await db.transaction('rw', db.table(tabla), async () => {
+  await escribir(`reordenar ${tabla}`, () => db.transaction('rw', db.table(tabla), async () => {
     for (const [pos, r] of ordenada.entries()) {
       if (r.orden !== pos + 1) await actualizar(tabla, r.id, { orden: pos + 1 });
     }
-  });
+  }));
 }

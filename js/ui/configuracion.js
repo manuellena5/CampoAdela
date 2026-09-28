@@ -5,14 +5,15 @@ import * as ajustes from '../ajustes.js';
 import { listar } from '../db.js';
 import { verificarYMostrar, forzarActualizacion } from '../actualizacion.js';
 import { sincronizar, alCambiarEstado } from '../sync.js';
-import { esc, $, toast } from '../lib/dom.js';
+import { esc, $, toast, marcarErrorCampo, limpiarErroresCampos } from '../lib/dom.js';
+import { abrirPanelSync } from './panelSync.js';
 import { formatoFechaHora } from '../lib/formato.js';
 import { navegar } from '../router.js';
 import { descargarPlantilla, leerArchivo, cargarCatalogos } from '../importacion.js';
 import { iniciarRevision } from './importar.js';
 
 const DESCRIPCION_ESTADO = {
-  'sin-config': 'Falta la URL del Apps Script en js/config.js',
+  'sin-config': APPS_SCRIPT_URL ? 'Falta cargar usuario y clave' : 'Falta la URL del Apps Script en js/config.js',
   'sin-conexion': 'Sin conexión',
   sincronizando: 'Sincronizando…',
   ok: 'Sincronizado',
@@ -42,7 +43,7 @@ export async function render(el) {
       <h1>Configuración</h1>
       ${completa ? '' : `<div class="aviso">Elegí tu usuario y cargá la clave compartida para empezar a usar la app.</div>`}
 
-      <form id="form-config" class="tarjeta" autocomplete="off">
+      <form id="form-config" class="tarjeta" autocomplete="off" novalidate>
         <div class="campo">
           <span class="label">¿Quién sos?</span>
           <div class="segmentado">
@@ -82,9 +83,18 @@ export async function render(el) {
         <div class="fila-dato"><span>Estado</span><strong id="sync-estado">…</strong></div>
         <div class="fila-dato"><span>Pendientes</span><span id="sync-pendientes">…</span></div>
         <div class="fila-dato"><span>Última sincronización</span><span id="sync-ultima">…</span></div>
-        <div class="dialogo-error" id="sync-error" hidden></div>
-        <button type="button" class="btn btn-bloque" id="sync-ahora" ${APPS_SCRIPT_URL ? '' : 'disabled'}>Sincronizar ahora</button>
+        <div class="panel-error" id="sync-error" hidden></div>
+        <div class="acciones">
+          <button type="button" class="btn" id="sync-panel">Ver detalle</button>
+          <button type="button" class="btn btn-primario" id="sync-ahora" ${APPS_SCRIPT_URL ? '' : 'disabled'}>Sincronizar ahora</button>
+        </div>
       </div>
+
+      <h2>Registro de errores</h2>
+      <a class="tarjeta tarjeta-boton enlace-tarjeta" href="#/config/errores">
+        <span>Ver los errores registrados en este dispositivo <span class="badge-nav badge-inline" data-badge-errores hidden></span></span>
+        <span aria-hidden="true">›</span>
+      </a>
 
       <h2>Importar movimientos</h2>
       <div class="tarjeta">
@@ -112,20 +122,33 @@ export async function render(el) {
   const tarjeta = $('#tarjeta-sync', el);
   const desuscribir = alCambiarEstado(async (e) => {
     if (!tarjeta.isConnected) { desuscribir?.(); return; }
-    $('#sync-estado', el).textContent = DESCRIPCION_ESTADO[e.estado];
+    const corriendo = e.estado === 'sincronizando';
+    $('#sync-estado', el).textContent = corriendo ? `Sincronizando ${e.progreso?.porcentaje ?? 0}%` : DESCRIPCION_ESTADO[e.estado];
     $('#sync-pendientes', el).textContent = e.pendientes;
-    $('#sync-error', el).textContent = e.error;
-    $('#sync-error', el).hidden = !e.error;
+    const caja = $('#sync-error', el);
+    caja.hidden = !e.error || corriendo;
+    if (e.error) {
+      caja.innerHTML = `<strong>${esc(e.error.codigo)}</strong> · ${esc(e.error.mensaje)}${
+        e.error.codigo === 'E-CLAVE' ? ' <button type="button" class="btn-link" data-ir="clave">Revisar la clave</button>' : ''}${
+        e.error.id ? ` <a class="btn-link" href="#/config/errores/${e.error.id}">Ver en el registro</a>` : ''}`;
+    }
+    // No se puede iniciar otro sync mientras hay uno en curso.
+    const btn = $('#sync-ahora', el);
+    btn.disabled = corriendo || !APPS_SCRIPT_URL;
+    btn.textContent = corriendo ? 'Sincronizando…' : 'Sincronizar ahora';
     $('#sync-ultima', el).textContent = fechaHora(await ajustes.obtener('ultimaSyncLocal'));
   });
+  // El badge de errores nuevos de esta tarjeta lo actualiza app.js (data-badge-errores).
+  window.dispatchEvent(new CustomEvent('log-visto'));
 
-  $('#sync-ahora', el).addEventListener('click', async (e) => {
-    const btn = e.currentTarget; // después del await, currentTarget es null
-    btn.disabled = true;
+  $('#sync-error', el).addEventListener('click', (e) => {
+    if (e.target.closest('[data-ir="clave"]')) { $('#clave', el).focus(); $('#clave', el).select(); }
+  });
+  $('#sync-panel', el).addEventListener('click', () => abrirPanelSync());
+  $('#sync-ahora', el).addEventListener('click', async () => {
     const r = await sincronizar();
-    btn.disabled = false;
-    if (r.ok) toast(r.cambios ? `Sincronizado (${r.cambios} cambios)` : 'Sincronizado');
-    else if (!navigator.onLine) toast('Sin conexión');
+    // Los errores ya se muestran como toast (y en la tarjeta); acá solo el éxito.
+    if (r.ok) toast(r.cambios ? `Sincronizado (${r.cambios} cambios)` : 'Sincronizado', { tipo: 'exito' });
   });
 
   $('#ver-clave', el).addEventListener('click', (e) => {
@@ -140,10 +163,10 @@ export async function render(el) {
     const datos = new FormData(form);
     const nuevoUsuario = datos.get('usuario');
     const nuevaClave = String(datos.get('clave') || '').trim();
-    if (!nuevoUsuario || !nuevaClave) {
-      toast('Completá usuario y clave');
-      return;
-    }
+    limpiarErroresCampos(form);
+    if (!nuevoUsuario) marcarErrorCampo(form.querySelector('input[name="usuario"]'), 'Elegí quién sos.');
+    if (!nuevaClave) marcarErrorCampo($('#clave', el), 'Cargá la clave compartida.');
+    if (!nuevoUsuario || !nuevaClave) return;
     await ajustes.guardar('usuario', nuevoUsuario);
     await ajustes.guardar('clave', nuevaClave);
     await ajustes.guardar('tipoDolar', datos.get('tipoDolar') || 'MEP');
@@ -161,7 +184,7 @@ export async function render(el) {
     if (!archivo) return;
     const catalogos = await cargarCatalogos();
     const { filas, error } = await leerArchivo(archivo, catalogos);
-    if (error) { toast(error, 6000); return; }
+    if (error) { toast(error, { tipo: 'advertencia', duracion: 7000 }); return; }
     iniciarRevision(filas, catalogos, archivo.name);
     navegar('/importar');
   });

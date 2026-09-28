@@ -116,7 +116,7 @@ async function editarCategoria(cat, categorias, subcategorias) {
       }
       const tipo = d.tipo || tipoActual;
       return categorias.some((c) => c.id !== cat?.id && c.tipo === tipo && mismoNombre(c.nombre, d.nombre))
-        ? 'Ya existe una categoría con ese nombre.' : null;
+        ? { campo: 'nombre', mensaje: 'Ya existe una categoría con ese nombre.' } : null;
     },
   });
   if (!res) return false;
@@ -164,7 +164,7 @@ async function editarSubcategoria(sub, categoriaId, subcategorias) {
         return usos ? `Tiene ${usos} movimiento(s) asociados: no se puede borrar, solo desactivar.` : null;
       }
       return hermanas.some((s) => s.id !== sub?.id && mismoNombre(s.nombre, d.nombre))
-        ? 'Ya existe una subcategoría con ese nombre.' : null;
+        ? { campo: 'nombre', mensaje: 'Ya existe una subcategoría con ese nombre.' } : null;
     },
   });
   if (!res) return false;
