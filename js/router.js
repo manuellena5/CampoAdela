@@ -58,6 +58,14 @@ async function resolver() {
   await def.vista.render(contenedor, params);
 }
 
+// Vuelve a dibujar la vista actual (p. ej. cuando llegan datos de la sincronización).
+// No interrumpe un diálogo abierto ni la pantalla de Configuración (puede haber algo a medio escribir).
+export function refrescar() {
+  if (document.querySelector('dialog[open]')) return;
+  if (rutaActual() === '/configuracion') return;
+  resolver();
+}
+
 export function iniciarRouter() {
   window.addEventListener('hashchange', resolver);
   resolver();

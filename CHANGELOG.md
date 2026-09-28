@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — 2026-09-28 — Fase 3: Apps Script y sincronización
+- `apps-script/Code.gs`: acciones `init`, `push` y `pull`; validación de clave (Script Property `CLAVE`); `LockService`;
+  columnas mapeadas por encabezado y registros ubicados por `id`; `syncTs` del servidor; seed con los mismos ids que la app.
+- En `push`, si el Sheet tiene una versión más nueva, la rechaza y la devuelve para que el cliente la adopte.
+- `Movimientos` incluye columnas legibles de solo lectura: `periodo`, `categoriaNombre`, `subcategoriaNombre`, `campanaNombre`, `pagoNombre`.
+- Fechas, ids y timestamps se guardan como texto plano (Sheets no los convierte).
+- `js/sync.js`: push de pendientes → pull desde `lastSync` → merge last-write-wins por `modificado`. Timeout de 60 s.
+- Disparadores: al abrir la app, al guardar (agrupa cambios 1,5 s), al volver la conexión y manual.
+- Indicador en el header (sincronizado / N pendientes / sin conexión / error); tocarlo sincroniza.
+- Configuración: estado, pendientes, última sincronización y "Sincronizar ahora".
+- `apps-script/README.md` con la instalación paso a paso y `tools/apps-script-local.mjs` para probar sin desplegar.
+
 ## 0.2.0 — 2026-09-28 — Fase 2: base local y ABMs
 - `js/db.js` con Dexie 4.4.6 (local en `/vendor`): tablas hermanos, categorías, subcategorías, campañas, movimientos, ajustes y cotizaciones.
 - Seed inicial (hermanos y categorías/subcategorías) con **ids fijos**, para que la sincronización no los duplique entre dispositivos.

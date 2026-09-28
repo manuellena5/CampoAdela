@@ -15,6 +15,11 @@ Abrir http://localhost:8080. El Service Worker cachea todo: para ver cambios sin
 la versión, en DevTools → Application → Service Workers marcar **Update on reload**
 (o usar una ventana de incógnito).
 
+## Backend (Google Sheet + Apps Script)
+
+Instalación paso a paso en [apps-script/README.md](apps-script/README.md).
+Para probar la sincronización sin desplegar: `node tools/apps-script-local.mjs` (ver ese README).
+
 ## Publicar una versión nueva
 
 1. Subir la versión en `version.json` **y** en `js/config.js` (`APP_VERSION`), con el mismo valor.

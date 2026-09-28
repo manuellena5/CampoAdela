@@ -86,13 +86,22 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 .75rem; }
 .marca img { border-radius: 6px; }
 
 .estado-sync {
+  font: inherit;
   font-size: .8rem;
-  padding: 3px 10px;
+  font-weight: 600;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, .15);
+  color: #fff;
+  cursor: pointer;
 }
 .estado-sync:empty { display: none; }
-.estado-sync.offline { background: #f0c060; color: #3a2a00; }
+.estado-sync.estado-pendientes { background: #f0c060; color: #3a2a00; }
+.estado-sync.estado-sin-conexion { background: #d9d4c4; color: #3a3a30; }
+.estado-sync.estado-error { background: #f3b2a6; color: #5a130a; }
+.estado-sync.estado-sin-config { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .8); }
 
 /* ===== Navegación: barra inferior en celular ===== */
 .nav {

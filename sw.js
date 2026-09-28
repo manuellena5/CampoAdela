@@ -17,6 +17,7 @@ const ASSETS = [
   'js/router.js',
   'js/db.js',
   'js/seed.js',
+  'js/sync.js',
   'js/ajustes.js',
   'js/actualizacion.js',
   'js/lib/dom.js',

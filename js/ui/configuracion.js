@@ -1,11 +1,26 @@
-// Pantalla Configuración: usuario, clave compartida, tipo de dólar, versión.
+// Pantalla Configuración: usuario, clave compartida, tipo de dólar, sincronización, versión.
 
-import { APP_VERSION } from '../config.js';
+import { APP_VERSION, APPS_SCRIPT_URL } from '../config.js';
 import * as ajustes from '../ajustes.js';
 import { listar } from '../db.js';
 import { verificarYMostrar } from '../actualizacion.js';
+import { sincronizar, alCambiarEstado } from '../sync.js';
 import { esc, $, toast } from '../lib/dom.js';
 import { navegar } from '../router.js';
+
+const DESCRIPCION_ESTADO = {
+  'sin-config': 'Falta la URL del Apps Script en js/config.js',
+  'sin-conexion': 'Sin conexión',
+  sincronizando: 'Sincronizando…',
+  ok: 'Sincronizado',
+  pendientes: 'Hay cambios sin sincronizar',
+  error: 'Error',
+};
+
+function fechaHora(iso) {
+  if (!iso) return 'Nunca';
+  return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+}
 
 export async function render(el) {
   const [usuario, clave, tipoDolar, completa, todos] = await Promise.all([
@@ -61,10 +76,12 @@ export async function render(el) {
       </form>
 
       <h2>Sincronización</h2>
-      <div class="tarjeta">
-        <div class="fila-dato"><span>Estado</span><span>No configurada</span></div>
-        <button type="button" class="btn btn-bloque" disabled>Sincronizar ahora</button>
-        <div class="ayuda">Disponible en la Fase 3.</div>
+      <div class="tarjeta" id="tarjeta-sync">
+        <div class="fila-dato"><span>Estado</span><strong id="sync-estado">…</strong></div>
+        <div class="fila-dato"><span>Pendientes</span><span id="sync-pendientes">…</span></div>
+        <div class="fila-dato"><span>Última sincronización</span><span id="sync-ultima">…</span></div>
+        <div class="dialogo-error" id="sync-error" hidden></div>
+        <button type="button" class="btn btn-bloque" id="sync-ahora" ${APPS_SCRIPT_URL ? '' : 'disabled'}>Sincronizar ahora</button>
       </div>
 
       <h2>Aplicación</h2>
@@ -75,6 +92,26 @@ export async function render(el) {
     </div>`;
 
   const form = $('#form-config', el);
+
+  // Estado de sync en vivo (se desuscribe cuando la vista deja de estar en pantalla).
+  const tarjeta = $('#tarjeta-sync', el);
+  const desuscribir = alCambiarEstado(async (e) => {
+    if (!tarjeta.isConnected) { desuscribir?.(); return; }
+    $('#sync-estado', el).textContent = DESCRIPCION_ESTADO[e.estado];
+    $('#sync-pendientes', el).textContent = e.pendientes;
+    $('#sync-error', el).textContent = e.error;
+    $('#sync-error', el).hidden = !e.error;
+    $('#sync-ultima', el).textContent = fechaHora(await ajustes.obtener('ultimaSyncLocal'));
+  });
+
+  $('#sync-ahora', el).addEventListener('click', async (e) => {
+    const btn = e.currentTarget; // después del await, currentTarget es null
+    btn.disabled = true;
+    const r = await sincronizar();
+    btn.disabled = false;
+    if (r.ok) toast(r.cambios ? `Sincronizado (${r.cambios} cambios)` : 'Sincronizado');
+    else if (!navigator.onLine) toast('Sin conexión');
+  });
 
   $('#ver-clave', el).addEventListener('click', (e) => {
     const input = $('#clave', el);
@@ -96,6 +133,7 @@ export async function render(el) {
     await ajustes.guardar('clave', nuevaClave);
     await ajustes.guardar('tipoDolar', datos.get('tipoDolar') || 'MEP');
     toast('Configuración guardada');
+    if (nuevaClave !== clave) sincronizar();
     if (!completa) navegar('/movimientos');
     else render(el);
   });

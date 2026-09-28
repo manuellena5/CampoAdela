@@ -50,6 +50,15 @@ async function migrarLocalStorage() {
   claves.forEach((k) => localStorage.removeItem(k));
 }
 
+// Suscriptores a cambios locales (lo usa sync.js para contar pendientes y sincronizar).
+const oyentes = new Set();
+export function alCambiarDatos(fn) {
+  oyentes.add(fn);
+}
+function notificarCambio() {
+  oyentes.forEach((fn) => { try { fn(); } catch (err) { console.error(err); } });
+}
+
 async function usuarioActual() {
   return (await db.ajustes.get('usuario'))?.valor || '';
 }
@@ -67,12 +76,14 @@ export async function crear(tabla, datos) {
     pendiente: true,
   };
   await db.table(tabla).add(registro);
+  notificarCambio();
   return registro;
 }
 
 // Modificación: actualiza `modificado` y marca pendiente.
 export async function actualizar(tabla, id, cambios) {
   await db.table(tabla).update(id, { ...cambios, modificado: new Date().toISOString(), pendiente: true });
+  notificarCambio();
 }
 
 // Borrado lógico: nunca se elimina el registro.
