@@ -23,9 +23,14 @@ Para probar la sincronización sin desplegar: `node tools/apps-script-local.mjs`
 ## Publicar una versión nueva
 
 1. Subir la versión en `version.json` **y** en `js/config.js` (`APP_VERSION`), con el mismo valor.
+   Si no coinciden, la app muestra el banner "Nueva versión" y no puede actualizarse.
 2. Si se agregaron archivos, sumarlos a `ASSETS` en `sw.js`.
 3. Agregar la entrada en `CHANGELOG.md`.
-4. Push a `main` (GitHub Pages publica desde la raíz).
+4. Verificar: `node tools/verificar.mjs` (versiones iguales y precache completo).
+5. Push a `main` (GitHub Pages publica desde la raíz; la CDN puede tardar unos minutos).
+
+En `localhost` la app sincroniza contra el Apps Script simulado (`node tools/apps-script-local.mjs`),
+nunca contra el Sheet real.
 
 Los usuarios con la app abierta ven el banner **"Nueva versión disponible — Actualizar"**.
 Actualizar nunca borra los datos locales (IndexedDB).

@@ -63,6 +63,12 @@ Versión: **Nueva versión** → Implementar*. Así **la URL no cambia**.
 ## Probar sin desplegar
 
 `node tools/apps-script-local.mjs` ejecuta este mismo `Code.gs` en Node con un Sheet simulado en memoria
-(puerto 8090, clave `prueba`). Para usarlo, poner temporalmente
-`APPS_SCRIPT_URL = 'http://localhost:8090/'` en `js/config.js` (no commitear ese valor).
+(puerto 8090, clave `prueba`). La app abierta en `localhost` lo usa automáticamente en lugar del Sheet real.
 `http://localhost:8090/__hojas` muestra el contenido de las pestañas.
+
+## Zona horaria
+
+Las fechas de calendario (`fecha`, `fechaInicio`, `tcFecha`, …) son texto `YYYY-MM-DD` y no se convierten.
+Los timestamps (`creado`, `modificado`) son ISO en UTC (terminan en `Z`), igual en la app y en el script:
+así se comparan para decidir qué edición gana. La zona `America/Argentina/Buenos_Aires` está fija en el código
+de ambos lados.

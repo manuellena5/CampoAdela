@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-09-28 — Correcciones
+- URL del Apps Script de producción en `js/config.js`. En `localhost` se usa el Apps Script simulado.
+- Banner "Nueva versión" que no desaparecía: `version.json` (0.4.0) y `APP_VERSION` (0.3.0) no coincidían.
+  Ahora, si después de actualizar la app sigue en otra versión, no se repite el banner por 15 minutos y
+  "Buscar actualizaciones" avisa de la inconsistencia.
+- `tools/verificar.mjs`: chequea versiones y precache antes de publicar.
+- Zona horaria fija `America/Argentina/Buenos_Aires` para "hoy" y para mostrar horas (app y Apps Script).
+
 ## 0.3.0 — 2026-09-28 — Fase 3: Apps Script y sincronización
 - `apps-script/Code.gs`: acciones `init`, `push` y `pull`; validación de clave (Script Property `CLAVE`); `LockService`;
   columnas mapeadas por encabezado y registros ubicados por `id`; `syncTs` del servidor; seed con los mismos ids que la app.

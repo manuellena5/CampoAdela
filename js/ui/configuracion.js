@@ -6,6 +6,7 @@ import { listar } from '../db.js';
 import { verificarYMostrar } from '../actualizacion.js';
 import { sincronizar, alCambiarEstado } from '../sync.js';
 import { esc, $, toast } from '../lib/dom.js';
+import { formatoFechaHora } from '../lib/formato.js';
 import { navegar } from '../router.js';
 
 const DESCRIPCION_ESTADO = {
@@ -18,8 +19,7 @@ const DESCRIPCION_ESTADO = {
 };
 
 function fechaHora(iso) {
-  if (!iso) return 'Nunca';
-  return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  return iso ? formatoFechaHora(iso) : 'Nunca';
 }
 
 export async function render(el) {
@@ -142,10 +142,11 @@ export async function render(el) {
     const btn = e.currentTarget;
     btn.disabled = true;
     btn.textContent = 'Buscando…';
-    const nueva = navigator.onLine ? await verificarYMostrar() : null;
+    const { nueva, inconsistente } = navigator.onLine ? await verificarYMostrar() : {};
     btn.disabled = false;
     btn.textContent = 'Buscar actualizaciones';
     if (!navigator.onLine) toast('Sin conexión');
+    else if (inconsistente) toast(`Publicada: ${inconsistente}, pero la app dice ${APP_VERSION}. Revisar APP_VERSION en js/config.js.`, 6000);
     else toast(nueva ? `Hay una versión nueva: ${nueva}` : 'Ya tenés la última versión');
   });
 }

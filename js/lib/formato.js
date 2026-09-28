@@ -1,5 +1,7 @@
 // Formato es-AR para moneda y fechas.
 
+import { ZONA_HORARIA } from '../config.js';
+
 const fmtARS = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
 const fmtUSD = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 const fmtNum = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
@@ -25,11 +27,22 @@ export function formatoFecha(iso) {
   return `${d}/${m}/${a}`;
 }
 
-// Fecha local de hoy como 'YYYY-MM-DD'.
+// 'YYYY-MM-DD' de un instante en la zona horaria de la app (Buenos Aires),
+// sin importar la zona configurada en el dispositivo.
+const fmtDiaAR = new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_HORARIA, year: 'numeric', month: '2-digit', day: '2-digit' });
+export function fechaAR(instante = new Date()) {
+  return fmtDiaAR.format(new Date(instante));
+}
+
+// Hoy en Buenos Aires como 'YYYY-MM-DD'.
 export function hoyISO() {
-  const d = new Date();
-  const pad = (x) => String(x).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return fechaAR(new Date());
+}
+
+// Timestamp ISO (UTC) → 'dd/mm/aa hh:mm' en hora de Buenos Aires.
+const fmtFechaHora = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA_HORARIA, dateStyle: 'short', timeStyle: 'short' });
+export function formatoFechaHora(iso) {
+  return iso ? fmtFechaHora.format(new Date(iso)) : '';
 }
 
 // Convierte texto ingresado ("1.234,56" o "1234.56") a número.

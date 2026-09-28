@@ -13,6 +13,10 @@
 // escritura concurrente queda afuera (el merge del cliente es idempotente).
 var MARGEN_PULL_MS = 5000;
 
+// Misma zona que la app (js/config.js). Las fechas de calendario son texto YYYY-MM-DD;
+// los timestamps (creado, modificado) son ISO en UTC.
+var ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
+
 // Tipos: s = texto, n = número, b = booleano, d = fecha YYYY-MM-DD, t = timestamp ISO.
 var COMUNES = { creado: 't', modificado: 't', cargadoPor: 's', borrado: 'b' };
 
@@ -313,7 +317,7 @@ function desdeCelda(valor, tipo) {
 function aTexto(valor, tipo) {
   if (valor === null || valor === undefined) return '';
   if (Object.prototype.toString.call(valor) === '[object Date]') {
-    if (tipo === 'd') return Utilities.formatDate(valor, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    if (tipo === 'd') return Utilities.formatDate(valor, ZONA_HORARIA, 'yyyy-MM-dd');
     return valor.toISOString();
   }
   return String(valor);
