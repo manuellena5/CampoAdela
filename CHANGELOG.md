@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.2 — 2026-09-28 — Fechas en la plantilla
+- La columna Fecha de la plantilla pasa a formato Texto: Excel guarda lo escrito (dd/mm/aaaa) tal cual.
+  Antes, con Windows en inglés, Excel interpretaba lo escrito como mes/día/año (05/09 → 9 de mayo).
+- Instrucciones de la plantilla: paso nuevo explicando cómo escribir la fecha.
+
 ## 0.7.1 — 2026-09-28 — Plantilla Excel y formulario
 - La plantilla de importación ahora es un Excel (.xlsx) con dos pestañas:
   **Instrucciones** (pasos, qué va en cada columna, valores posibles, categorías/subcategorías, campañas y

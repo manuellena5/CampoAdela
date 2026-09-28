@@ -6,13 +6,13 @@
 //   combinadas?: ['A1:E1'], tabla?: { nombre, filas } (encabezado en la fila 1),
 //   validaciones?: [{ rango: 'B2:B1000', lista: ['A','B'] | 'Hoja!$A$2:$A$9', estricta?: false }] }
 // Estilos: 'titulo', 'subtitulo', 'negrita', 'enc' (encabezado de tabla), 'texto' (ajustado con borde),
-// 'parrafo' (ajustado sin borde), 'fecha', 'numero'.
+// 'parrafo' (ajustado sin borde), 'fecha', 'numero', 'textoPlano' (formato Texto: Excel guarda lo escrito tal cual).
 
 import { crearZip, leerZip } from './zip.js';
 
 const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const ESTILOS = { normal: 0, negrita: 1, fecha: 2, numero: 3, titulo: 4, texto: 5, subtitulo: 6, enc: 7, parrafo: 8 };
+const ESTILOS = { normal: 0, negrita: 1, fecha: 2, numero: 3, titulo: 4, texto: 5, subtitulo: 6, enc: 7, parrafo: 8, textoPlano: 9 };
 const AJUSTADOS = new Set(['texto', 'enc', 'parrafo']);
 
 const xml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -104,7 +104,7 @@ const ESTILOS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE3EFE4"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFC8C8BE"/></left><right style="thin"><color rgb="FFC8C8BE"/></right><top style="thin"><color rgb="FFC8C8BE"/></top><bottom style="thin"><color rgb="FFC8C8BE"/></bottom><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="9">
+<cellXfs count="10">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
 <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
@@ -114,6 +114,7 @@ const ESTILOS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;

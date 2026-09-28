@@ -13,7 +13,9 @@ function columnas(cat) {
   const campanas = cat.campanas.map((c) => c.nombre);
   const hermanos = cat.hermanos.filter((h) => h.activo).map((h) => h.nombre);
   return [
-    ['Fecha', 'Sí', 'Día del gasto o del ingreso.', 'Fecha dd/mm/aaaa. No puede ser futura.', '15/09/2025', 12],
+    ['Fecha', 'Sí', 'Día del gasto o del ingreso, escrito como DÍA/MES/AÑO.',
+      'dd/mm/aaaa, por ejemplo 15/09/2025 = 15 de septiembre de 2025. La columna tiene formato Texto: Excel guarda lo que escribís tal cual, sin darlo vuelta según la configuración de Windows. No puede ser futura.',
+      '15/09/2025', 12],
     ['Descripción', 'No', 'Qué fue, en pocas palabras.', 'Texto libre. Si empieza con "EJEMPLO" la fila se ignora.', 'Semilla soja', 30],
     ['Categoría', 'Sí', 'Tipo de gasto o ingreso. Define si es gasto o ingreso.', 'Una de la lista desplegable (ver "Categorías y subcategorías" abajo). Si un nombre existe como gasto y como ingreso, se aclara entre paréntesis: "Otros (gasto)".', 'Insumos', 20],
     ['Subcategoría', 'No', 'Detalle dentro de la categoría.', 'Una de las subcategorías de ESA categoría (ver abajo). Vacía = sin subcategoría.', 'Semilla', 16],
@@ -65,9 +67,9 @@ export function construirPlantilla(cat, hoy) {
   const rango = (titulo) => `${col(titulo)}2:${col(titulo)}${FILAS_CON_LISTAS}`;
   const hermano = hermanos[0] || 'Caja común';
   const ejemplos = [
-    [{ v: '2025-09-15', fecha: true }, `${MARCA_EJEMPLO} - Semilla soja`, 'Insumos', 'Semilla', campana, 'Agronomía', 'ARS', { v: 1589014.35, e: 'numero' }, 'MEP', null, null, null, 'Caja común'],
-    [{ v: '2025-11-13', fecha: true }, `${MARCA_EJEMPLO} - Siembra 20 ha`, 'Servicios', 'Siembra', campana, 'Contratista', 'ARS', { v: 1657000, e: 'numero' }, 'Oficial', { v: 1430, e: 'numero' }, null, null, hermano],
-    [{ v: '2026-04-15', fecha: true }, `${MARCA_EJEMPLO} - Venta de soja`, 'Venta de grano', null, campana, 'Acopio', 'USD', { v: 20000, e: 'numero' }, 'MEP', null, { v: 700, e: 'numero' }, { v: 28.57, e: 'numero' }, 'Caja común'],
+    [{ v: '15/09/2025', e: 'textoPlano' }, `${MARCA_EJEMPLO} - Semilla soja`, 'Insumos', 'Semilla', campana, 'Agronomía', 'ARS', { v: 1589014.35, e: 'numero' }, 'MEP', null, null, null, 'Caja común'],
+    [{ v: '13/11/2025', e: 'textoPlano' }, `${MARCA_EJEMPLO} - Siembra 20 ha`, 'Servicios', 'Siembra', campana, 'Contratista', 'ARS', { v: 1657000, e: 'numero' }, 'Oficial', { v: 1430, e: 'numero' }, null, null, hermano],
+    [{ v: '15/04/2026', e: 'textoPlano' }, `${MARCA_EJEMPLO} - Venta de soja`, 'Venta de grano', null, campana, 'Acopio', 'USD', { v: 20000, e: 'numero' }, 'MEP', null, { v: 700, e: 'numero' }, { v: 28.57, e: 'numero' }, 'Caja común'],
   ];
   const hojaDatos = {
     nombre: HOJA_DATOS,
@@ -84,9 +86,10 @@ export function construirPlantilla(cat, hoy) {
       { rango: rango('Pagó'), lista: rangoLista('Pagó') },
     ],
   };
-  // Formato de fecha y número en toda la columna (lo heredan las filas nuevas)
+  // Formato por columna (lo heredan las filas nuevas). Fecha va como Texto: si fuera fecha de Excel,
+  // lo que se escribe se interpreta según la configuración regional (en Windows en inglés, mes/día/año).
   hojaDatos.estilosColumna = Object.fromEntries([
-    ['Fecha', 'fecha'], ['Monto', 'numero'], ['Cotización', 'numero'], ['Quintales', 'numero'], ['Precio por qq', 'numero'],
+    ['Fecha', 'textoPlano'], ['Monto', 'numero'], ['Cotización', 'numero'], ['Quintales', 'numero'], ['Precio por qq', 'numero'],
   ].map(([titulo, estilo]) => [encabezados.indexOf(titulo), estilo]));
 
   // ---- Pestaña de instrucciones
@@ -108,11 +111,12 @@ export function construirPlantilla(cat, hoy) {
   titulo('Cómo usar esta planilla', 'subtitulo');
   [
     `1. Andá a la pestaña "${HOJA_DATOS}" (abajo). Cargá un movimiento (gasto o ingreso) por fila, debajo de los encabezados: la tabla se agranda sola.`,
-    '2. Las columnas Categoría, Campaña, Moneda, Tipo de dólar y Pagó tienen una lista desplegable: elegí el valor de la lista.',
-    `3. Las 3 filas que dicen "${MARCA_EJEMPLO}" en Descripción son de muestra: borralas (si quedan, la app las ignora).`,
-    '4. Guardá el archivo (puede quedar como .xlsx). No cambies los nombres de las columnas.',
-    '5. En la app: Configuración → Importar movimientos → Elegir archivo.',
-    '6. La app muestra las filas con errores: podés corregirlas ahí mismo o ignorarlas. Las filas iguales a un movimiento ya cargado (misma fecha, categoría y monto) se marcan como posibles duplicados y se ignoran.',
+    '2. Fecha: escribila como DÍA/MES/AÑO, por ejemplo 15/09/2025 (15 de septiembre). La columna tiene formato Texto a propósito, para que Excel no la cambie.',
+    '3. Las columnas Categoría, Campaña, Moneda, Tipo de dólar y Pagó tienen una lista desplegable: elegí el valor de la lista.',
+    `4. Las 3 filas que dicen "${MARCA_EJEMPLO}" en Descripción son de muestra: borralas (si quedan, la app las ignora).`,
+    '5. Guardá el archivo (puede quedar como .xlsx). No cambies los nombres de las columnas.',
+    '6. En la app: Configuración → Importar movimientos → Elegir archivo.',
+    '7. La app muestra las filas con errores: podés corregirlas ahí mismo o ignorarlas. Las filas iguales a un movimiento ya cargado (misma fecha, categoría y monto) se marcan como posibles duplicados y se ignoran.',
   ].forEach(parrafo);
   vacia();
 
