@@ -546,6 +546,86 @@ input:focus, select:focus, textarea:focus {
 a.item-boton { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; }
 a.item-boton .detalle { display: block; }
 
+/* ===== Listado de movimientos ===== */
+.texto-suave { color: var(--texto-suave); }
+.sub { color: var(--texto-suave); font-weight: 400; }
+.nowrap { white-space: nowrap; }
+
+.filtros { padding: 12px; }
+.filtros-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.filtros-grid label { font-size: .8rem; font-weight: 600; color: var(--texto-suave); }
+.filtros-grid select { margin-top: 2px; min-height: 44px; padding: 8px 10px; color: var(--texto); }
+.filtros-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.totales {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.total {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 10px 12px;
+}
+.total-titulo { font-size: .8rem; color: var(--texto-suave); font-weight: 600; }
+.total-valor { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.total.gasto .total-valor { color: var(--gasto); }
+.total.ingreso .total-valor { color: var(--ingreso); }
+.contador { margin: 8px 0 12px; }
+
+/* La moneda en que se cargó va en negrita; la convertida, más liviana. */
+.monto.original { font-weight: 700; }
+.monto:not(.original) { font-weight: 500; }
+
+.tarjeta-mov { padding: 12px 14px; margin-bottom: 8px; cursor: pointer; }
+.tarjeta-mov .num { text-align: right; }
+.tarjeta-mov .item-fila + .detalle { margin: 2px 0; }
+.btn-borrar { width: 36px; height: 36px; font-size: .95rem; flex-shrink: 0; }
+
+.vista-tabla { display: none; }
+
+@media (min-width: 900px) {
+  .filtros-grid { grid-template-columns: repeat(4, 1fr); }
+  .totales { grid-template-columns: repeat(4, 1fr); }
+  .vista-tabla { display: block; }
+  .vista-tarjetas { display: none; }
+}
+
+.tabla-contenedor {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  overflow-x: auto;
+}
+.tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tabla th {
+  text-align: left;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--texto-suave);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--borde);
+  white-space: nowrap;
+}
+.tabla td { padding: 8px 12px; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+.tabla tbody tr { cursor: pointer; }
+.tabla tbody tr:hover { background: var(--verde-claro); }
+.tabla tbody tr:last-child td { border-bottom: 0; }
+.tabla .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.detalle-celda { color: var(--texto-suave); max-width: 280px; }
+
 /* Aviso global (cotizaciones a confirmar) */
 .aviso-global {
   position: fixed;

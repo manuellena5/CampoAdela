@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-09-28 — Fase 5: listado y vistas
+- Listado con filtros por campaña (Todas / Sin campaña / cada una), categoría, mes y quién pagó.
+  Los filtros se conservan durante la sesión; "Limpiar filtros".
+- Vista ARS / USD / Ambos, recordada por usuario. En "Ambos", la moneda original va en negrita.
+- Totales del filtro: gastos, ingresos, neto y por hermano (⅓).
+- Tabla a todo el ancho en notebook; tarjetas apiladas en celular. Tocar un movimiento abre la edición;
+  borrar desde el listado pide confirmación.
+
 ## 0.4.0 — 2026-09-28 — Fase 4: carga de movimientos y dólar
 - `js/dolar.js`: cotización de venta MEP/Oficial. Hoy desde dolarapi.com; fechas pasadas desde
   ArgentinaDatos por fecha puntual. Fines de semana y feriados (API de feriados, cacheada por año)
