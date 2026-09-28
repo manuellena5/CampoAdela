@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1 — 2026-09-28
+- El encabezado dice "Campo Adela".
+- Formulario de movimiento: "Pagó" pasa a ser un desplegable (Caja común por defecto).
+
 ## 0.9.0 — 2026-09-28 — Manejo de errores y panel de sincronización
 - **Errores con mensajes amigables** (`js/errores.js`): códigos E-RED, E-CLAVE, E-SRV, E-DOLAR, E-DB, E-VAL y E-GEN,
   con acción cuando corresponde (Ir a Configuración / Reintentar). Nunca se muestra el stack, JSON crudo

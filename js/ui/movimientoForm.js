@@ -114,11 +114,10 @@ export async function render(el, { id } = {}, plantilla = null) {
         </div>
 
         <div class="campo">
-          <span class="label">Pagó</span>
-          <div class="segmentado">
-            ${pagadores.map((p) => `
-              <label><input type="radio" name="pagoId" value="${esc(p.id)}" ${p.id === m.pagoId ? 'checked' : ''}><span>${esc(p.nombre)}</span></label>`).join('')}
-          </div>
+          <label for="m-pago">Pagó</label>
+          <select id="m-pago" name="pagoId">
+            ${pagadores.map((p) => `<option value="${esc(p.id)}" ${p.id === m.pagoId ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}
+          </select>
         </div>
 
         <div class="campo">
@@ -346,7 +345,7 @@ export async function render(el, { id } = {}, plantilla = null) {
       ...calcularMontos(moneda, montoOriginal, tc),
       quintales: opcional('quintales'),
       precioQq: opcional('precioQq'),
-      pagoId: valorRadio('pagoId') || PAGO_CAJA,
+      pagoId: campo('pagoId').value || PAGO_CAJA,
       comprobanteUrl: comprobante.quitar ? '' : m.comprobanteUrl || '',
     };
 
