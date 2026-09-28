@@ -348,6 +348,175 @@ input:focus, select:focus, textarea:focus {
 }
 .fila-dato span:first-child { color: var(--texto-suave); }
 
+/* ===== Encabezado de pantalla con acción ===== */
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.encabezado h1 { margin: 0; }
+
+.titulo-grupo { display: flex; align-items: center; gap: 8px; }
+.titulo-grupo::before { content: ""; width: 10px; height: 10px; border-radius: 50%; }
+.titulo-grupo.gasto::before { background: var(--gasto); }
+.titulo-grupo.ingreso::before { background: var(--ingreso); }
+
+/* ===== Listas (ABMs) ===== */
+.lista { padding: 0; overflow: hidden; }
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  padding: 4px 8px 4px 16px;
+  border-bottom: 1px solid var(--borde);
+}
+.lista > .item:last-child, .item-grupo:last-child .subitems { border-bottom: 0; }
+
+.item-boton {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--borde);
+  padding: 12px 16px;
+  cursor: pointer;
+}
+.item-boton:hover { background: var(--verde-claro); }
+.lista > .item-boton:last-child { border-bottom: 0; }
+
+.item-nombre { font-weight: 600; }
+
+.enlace {
+  flex: 1;
+  min-height: 44px;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.enlace:hover { color: var(--verde); }
+
+.item-acciones { display: flex; gap: 4px; flex-shrink: 0; }
+
+.btn-icono {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: var(--superficie);
+  color: var(--texto);
+  cursor: pointer;
+}
+.btn-icono:disabled { opacity: .3; cursor: default; }
+
+.btn-link {
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--verde);
+  background: none;
+  border: 0;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.item-grupo > .item { border-bottom: 0; }
+.subitems {
+  padding: 0 0 4px 16px;
+  border-bottom: 1px solid var(--borde);
+}
+.subitem {
+  min-height: 44px;
+  padding-left: 14px;
+  border-bottom: 0;
+  border-left: 2px solid var(--borde);
+}
+.subitem .enlace { font-weight: 400; }
+.subitems .btn-link { padding-left: 16px; }
+
+.inactivo .item-nombre, .inactivo > .item .enlace, .subitem.inactivo .enlace { color: var(--texto-suave); }
+
+.vacio-chico { color: var(--texto-suave); }
+
+.badge {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--borde);
+  color: var(--texto-suave);
+  vertical-align: middle;
+}
+.badge-verde, .estado-en-curso { background: var(--verde-claro); color: var(--verde-oscuro); }
+.estado-planificada { background: var(--aviso-fondo); color: var(--aviso); }
+
+/* Tarjetas clickeables (campañas) */
+.tarjeta-boton {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tarjeta-boton:hover { border-color: var(--verde); }
+
+.item-fila { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.detalle { color: var(--texto-suave); font-size: .9rem; margin-top: 2px; }
+.aviso-chico { margin-top: 8px; font-size: .85rem; color: var(--aviso); }
+
+.fila-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 500;
+}
+.check input { width: 22px; height: 22px; min-height: 0; accent-color: var(--verde); }
+
+.btn-peligro { color: var(--gasto); border-color: var(--gasto); }
+
+/* ===== Diálogo ===== */
+.dialogo {
+  width: min(520px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--superficie);
+  color: var(--texto);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+}
+.dialogo::backdrop { background: rgba(0, 0, 0, .45); }
+.dialogo form { padding: 20px; }
+.dialogo h2 { margin: 0 0 16px; }
+.dialogo-error {
+  color: var(--gasto);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.dialogo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.dialogo-acciones .btn { flex: 1 1 120px; }
+
 /* ===== Banner de actualización ===== */
 /* Fijo sobre la barra inferior (celular) o abajo a la derecha (notebook). */
 .banner {

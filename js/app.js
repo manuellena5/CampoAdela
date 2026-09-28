@@ -2,6 +2,8 @@
 
 import { iniciarRouter } from './router.js';
 import { registrarSW, verificarYMostrar, aplicarActualizacion } from './actualizacion.js';
+import { abrirDB } from './db.js';
+import { esc } from './lib/dom.js';
 
 function actualizarEstadoConexion() {
   const el = document.getElementById('estado-sync');
@@ -23,4 +25,15 @@ window.addEventListener('offline', actualizarEstadoConexion);
 
 actualizarEstadoConexion();
 verificarYMostrar();
-iniciarRouter();
+
+try {
+  await abrirDB();
+  iniciarRouter();
+} catch (err) {
+  console.error(err);
+  document.getElementById('vista').innerHTML = `
+    <div class="form-centrado"><div class="aviso">
+      No se pudo abrir la base de datos local (${esc(err.message)}).
+      Si estás en una ventana privada, abrí la app en una ventana normal.
+    </div></div>`;
+}

@@ -1,18 +1,24 @@
 // Pantalla Configuración: usuario, clave compartida, tipo de dólar, versión.
 
-import { APP_VERSION, HERMANOS_SEED } from '../config.js';
+import { APP_VERSION } from '../config.js';
 import * as ajustes from '../ajustes.js';
+import { listar } from '../db.js';
 import { verificarYMostrar } from '../actualizacion.js';
 import { esc, $, toast } from '../lib/dom.js';
 import { navegar } from '../router.js';
 
 export async function render(el) {
-  const [usuario, clave, tipoDolar, completa] = await Promise.all([
+  const [usuario, clave, tipoDolar, completa, todos] = await Promise.all([
     ajustes.obtener('usuario'),
     ajustes.obtener('clave'),
     ajustes.obtener('tipoDolar'),
     ajustes.configuracionCompleta(),
+    listar('hermanos'),
   ]);
+  // Activos, más el usuario actual aunque esté inactivo.
+  const hermanos = todos
+    .filter((h) => h.activo || h.id === usuario)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   el.innerHTML = `
     <div class="form-centrado">
@@ -23,7 +29,7 @@ export async function render(el) {
         <div class="campo">
           <span class="label">¿Quién sos?</span>
           <div class="segmentado">
-            ${HERMANOS_SEED.map((h) => `
+            ${hermanos.map((h) => `
               <label>
                 <input type="radio" name="usuario" value="${esc(h.id)}" ${h.id === usuario ? 'checked' : ''} required>
                 <span>${esc(h.nombre)}</span>
