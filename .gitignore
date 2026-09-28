@@ -1,3 +1,8 @@
 # Planillas con datos reales: no se publican (el repo de GitHub Pages es público)
 *.xlsx
 ~$*
+
+# Especificación y datos de migración: solo locales
+prompt-claude-code-app-campo.md
+SPEC.md
+migracion/

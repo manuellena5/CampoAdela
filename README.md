@@ -1,7 +1,6 @@
 # Campo Adela
 
-PWA para registrar gastos e ingresos del campo familiar (20 ha en Landeta, Santa Fe).
-La especificación completa está en [prompt-claude-code-app-campo.md](prompt-claude-code-app-campo.md).
+PWA para registrar gastos e ingresos del campo familiar.
 
 Sin build step: HTML + CSS + JavaScript (ES modules). Se publica tal cual en GitHub Pages.
 
