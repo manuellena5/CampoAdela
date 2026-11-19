@@ -32,12 +32,12 @@ export async function render(el) {
       ${campanas.map((c) => {
         const sup = superpuestas(c, campanas);
         return `
-          <div class="tarjeta tarjeta-boton" role="button" tabindex="0" data-accion="resumen" data-id="${esc(c.id)}"
+          <div class="tarjeta tarjeta-boton tarjeta-campana campana-${claseEstado(c.estado)}" role="button" tabindex="0" data-accion="resumen" data-id="${esc(c.id)}"
             title="Ver el resumen de la campaña">
             <div class="item-fila">
               <strong>${esc(c.nombre)}</strong>
               <span class="item-acciones">
-                <span class="badge estado-${c.estado.replace(' ', '-')}">${esc(c.estado)}</span>
+                ${pildoraEstado(c.estado)}
                 <button type="button" class="btn-icono" data-accion="editar" data-id="${esc(c.id)}"
                   aria-label="Editar ${esc(c.nombre)}" title="Editar campaña">✏️</button>
               </span>
@@ -64,6 +64,18 @@ export async function render(el) {
   el.onkeydown = (e) => {
     if (e.key === 'Enter' && e.target.matches('.tarjeta-boton[data-accion]')) accionar(e.target);
   };
+}
+
+// Estado de la campaña: píldora con ícono y color propio (y borde de la tarjeta del mismo color).
+const ESTADO_VISUAL = {
+  'en curso': { icono: '●', texto: 'En curso' },
+  planificada: { icono: '◷', texto: 'Planificada' },
+  cerrada: { icono: '✓', texto: 'Cerrada' },
+};
+const claseEstado = (estado) => String(estado || 'planificada').replace(' ', '-');
+export function pildoraEstado(estado) {
+  const v = ESTADO_VISUAL[estado] || { icono: '•', texto: estado || '—' };
+  return `<span class="estado-pill estado-${claseEstado(estado)}"><span aria-hidden="true">${v.icono}</span> ${esc(v.texto)}</span>`;
 }
 
 function rangoFechas(c) {

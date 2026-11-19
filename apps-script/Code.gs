@@ -6,6 +6,7 @@
  *   accion 'push' : datos = { entidad: [registros] }. Upsert por id; gana el `modificado` más reciente.
  *   accion 'pull' : datos = { desde, limite?, cursor? }. Registros con syncTs > desde, paginados si viene `limite`.
  *   accion 'log'  : datos = { entradas: [...] }. Agrega el log de errores de la app a la pestaña "Errores".
+ *   Entidades: hermanos, categorias, subcategorias, campanas, movimientos y granos (una pestaña cada una).
  *   accion 'subirComprobante': foto/PDF a la carpeta de Drive (Script Property CARPETA_COMPROBANTES).
  *
  * Se copia a mano al editor de Apps Script (ver README.md en esta carpeta).
@@ -58,10 +59,21 @@ var ENTIDADES = {
       'moneda', 'montoOriginal', 'montoARS', 'montoUSD', 'campanaNombre', 'pagoNombre',
     ],
   },
+  // Granos: entregas al acopio, liquidaciones (ventas), cobros y ajustes de kilos.
+  granos: {
+    hoja: 'Granos',
+    campos: {
+      id: 's', fecha: 'd', tipo: 's', campanaId: 's', grano: 's', acopio: 's', kg: 'n',
+      precioQq: 'n', gastos: 'n', fechaCobro: 'd', liquidacionId: 's', monto: 'n',
+      movimientoId: 's', movGenerado: 'b', nota: 's',
+    },
+    primeras: ['id', 'fecha', 'tipo', 'grano', 'acopio', 'kg', 'precioQq', 'monto'],
+  },
 };
 
-// Orden de procesamiento: primero las referencias, al final los movimientos.
-var ORDEN_ENTIDADES = ['hermanos', 'categorias', 'subcategorias', 'campanas', 'movimientos'];
+// Orden de procesamiento: primero las referencias, después los movimientos y al final los granos
+// (un cobro de granos referencia el movimiento de ingreso que generó).
+var ORDEN_ENTIDADES = ['hermanos', 'categorias', 'subcategorias', 'campanas', 'movimientos', 'granos'];
 
 // ---------------------------------------------------------------- Entrada
 

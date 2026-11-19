@@ -11,7 +11,7 @@ const ETAPAS = {
   preparando: 'Preparando', enviando: 'Enviando', recibiendo: 'Recibiendo', aplicando: 'Aplicando cambios', listo: 'Listo', error: 'Error',
 };
 const ENTIDADES = {
-  movimientos: 'Movimientos', campanas: 'Campañas', categorias: 'Categorías', subcategorias: 'Subcategorías',
+  movimientos: 'Movimientos', granos: 'Granos', campanas: 'Campañas', categorias: 'Categorías', subcategorias: 'Subcategorías',
   hermanos: 'Hermanos', comprobantes: 'Comprobantes', errores: 'Registros de error',
 };
 const ESTADOS = {

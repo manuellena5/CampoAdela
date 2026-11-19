@@ -5,6 +5,7 @@ export async function render(el) {
     <h1>Más</h1>
     <ul class="tarjeta lista-enlaces" style="padding:0">
       <li><a href="#/resumen">Resumen de campaña</a></li>
+      <li><a href="#/granos">Granos: stock y liquidaciones</a></li>
       <li><a href="#/cuentas">Cuentas entre hermanos</a></li>
     </ul>
     <ul class="tarjeta lista-enlaces" style="padding:0">

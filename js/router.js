@@ -15,6 +15,7 @@ import * as mas from './ui/mas.js';
 import * as configuracion from './ui/configuracion.js';
 import * as resumen from './ui/resumen.js';
 import * as cuentas from './ui/cuentas.js';
+import * as granos from './ui/granos.js';
 import * as importar from './ui/importar.js';
 import * as registroErrores from './ui/registroErrores.js';
 import { configuracionCompleta } from './ajustes.js';
@@ -31,6 +32,7 @@ const RUTAS = [
   { patron: /^\/resumen$/, vista: resumen, nav: 'resumen' },
   { patron: /^\/resumen\/([\w-]+)$/, vista: resumen, nav: 'resumen', params: ['id'] },
   { patron: /^\/cuentas$/, vista: cuentas, nav: 'cuentas' },
+  { patron: /^\/granos$/, vista: granos, nav: 'granos' },
   { patron: /^\/importar$/, vista: importar, nav: 'configuracion' },
   { patron: /^\/categorias$/, vista: categorias, nav: 'categorias' },
   { patron: /^\/hermanos$/, vista: hermanos, nav: 'hermanos' },
@@ -80,8 +82,8 @@ async function resolver(ruta = rutaDelHash()) {
   const params = {};
   (def.params || []).forEach((nombre, i) => { if (match[i + 1] !== undefined) params[nombre] = decodeURIComponent(match[i + 1]); });
 
-  // En celular, Resumen/Cuentas/Categorías/Hermanos/Configuración cuelgan de "Más".
-  const bajoMas = ['resumen', 'cuentas', 'categorias', 'hermanos', 'configuracion'].includes(def.nav);
+  // En celular, Resumen/Granos/Cuentas/Categorías/Hermanos/Configuración cuelgan de "Más".
+  const bajoMas = ['resumen', 'granos', 'cuentas', 'categorias', 'hermanos', 'configuracion'].includes(def.nav);
   document.querySelectorAll('.nav a').forEach((a) => {
     a.classList.toggle('activo', a.dataset.ruta === def.nav || (bajoMas && a.dataset.ruta === 'mas'));
   });

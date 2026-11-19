@@ -31,6 +31,11 @@ db.version(3).stores({
   historialSync: '++id, fecha',
 });
 
+// v4: granos (entregas al acopio, liquidaciones, cobros y ajustes de kilos).
+db.version(4).stores({
+  granos: 'id, fecha, tipo, campanaId, liquidacionId',
+});
+
 db.on('populate', async (tx) => {
   await tx.table('hermanos').bulkAdd(SEED.hermanos);
   await tx.table('categorias').bulkAdd(SEED.categorias);
@@ -38,7 +43,7 @@ db.on('populate', async (tx) => {
 });
 
 // Entidades que se sincronizan con el Sheet (Fase 3).
-export const TABLAS_SYNC = ['hermanos', 'categorias', 'subcategorias', 'campanas', 'movimientos'];
+export const TABLAS_SYNC = ['hermanos', 'categorias', 'subcategorias', 'campanas', 'movimientos', 'granos'];
 
 // Abre la base, migra los ajustes de la Fase 1 (localStorage) y pide almacenamiento persistente.
 export async function abrirDB() {

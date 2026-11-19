@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.0 — 2026-11-19 — Granos, estados de campaña y detalle en el resumen
+- **Granos** (`#/granos`, en "Más" en el celular): stock por campaña, grano y acopio; liquidaciones (kilos, precio
+  por qq, gastos a descontar, fecha de cobro) con bruto, neto, cobrado y lo que falta; cobros que **generan el
+  movimiento de ingreso** "Venta de grano" (con los quintales proporcionales) o se **vinculan** a uno ya cargado;
+  ajustes de kilos (merma, diferencias) e historial. Precio de referencia por grano para estimar el valor del stock.
+  No deja vender más kilos de los que hay en el acopio. Borrar un cobro generado borra también su movimiento.
+- Nueva tabla `granos` (Dexie v4) que se sincroniza con la pestaña "Granos" del Sheet.
+  **Requiere actualizar el Apps Script** (nueva versión de la implementación): sin eso los granos quedan pendientes.
+- Campañas: el estado se muestra como píldora con ícono y color (● En curso, ◷ Planificada, ✓ Cerrada) y la
+  tarjeta lleva un borde del mismo color. También en el Resumen.
+- Resumen de campaña: nivel **movimiento**. Tocando una categoría (sin subcategorías), una subcategoría o un ingreso
+  se despliegan sus movimientos (siempre arranca plegado); tocando un movimiento se abre para editarlo.
+
 ## 0.9.1 — 2026-09-28
 - El encabezado dice "Campo Adela".
 - Formulario de movimiento: "Pagó" pasa a ser un desplegable (Caja común por defecto).

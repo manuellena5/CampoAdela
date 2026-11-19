@@ -475,8 +475,31 @@ input:focus, select:focus, textarea:focus {
   color: var(--texto-suave);
   vertical-align: middle;
 }
-.badge-verde, .estado-en-curso { background: var(--verde-claro); color: var(--verde-oscuro); }
-.estado-planificada { background: var(--aviso-fondo); color: var(--aviso); }
+.badge-verde { background: var(--verde-claro); color: var(--verde-oscuro); }
+
+/* Estado de campaña: píldora con ícono + borde izquierdo de la tarjeta del mismo color */
+:root { --estado-curso: #2f6b3a; --estado-plan: #2f6aa8; --estado-cerrada: #7a7f7b; }
+@media (prefers-color-scheme: dark) { :root { --estado-curso: #7cc088; --estado-plan: #7fb2e5; --estado-cerrada: #9aa29c; } }
+.estado-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.estado-pill.estado-en-curso { color: var(--estado-curso); background: color-mix(in srgb, var(--estado-curso) 12%, transparent); }
+.estado-pill.estado-planificada { color: var(--estado-plan); background: color-mix(in srgb, var(--estado-plan) 12%, transparent); }
+.estado-pill.estado-cerrada { color: var(--estado-cerrada); background: transparent; border-style: dashed; }
+.tarjeta-campana { border-left-width: 5px; }
+.tarjeta-campana.campana-en-curso { border-left-color: var(--estado-curso); }
+.tarjeta-campana.campana-planificada { border-left-color: var(--estado-plan); }
+.tarjeta-campana.campana-cerrada { border-left-color: var(--estado-cerrada); }
+.tarjeta-campana.campana-cerrada strong { color: var(--texto-suave); }
 
 /* Tarjetas clickeables (campañas) */
 .tarjeta-boton {
@@ -966,3 +989,41 @@ label.btn { cursor: pointer; }
 .tabla-panel th, .tabla-panel td { padding: 5px 6px; }
 .tabla-panel tbody tr { cursor: default; }
 .tabla-panel tbody tr:hover { background: none; }
+
+/* ===== Resumen: nivel movimiento (plegado por defecto) ===== */
+.tabla-resumen tr.fila-plegable[data-grupo] { cursor: pointer; }
+.tabla-resumen tr.fila-plegable[data-grupo]:hover { background: var(--verde-claro); }
+.flecha-plegable { display: inline-block; width: 1.1em; text-align: center; transform-origin: 50% 50%; color: var(--texto-suave); transition: transform .15s; }
+tr[aria-expanded="true"] .flecha-plegable { transform: rotate(90deg); }
+.tabla-resumen .fila-mov td { font-size: .82rem; color: var(--texto-suave); background: var(--fondo); }
+.tabla-resumen .fila-mov td:first-child { padding-left: 44px; max-width: 360px; }
+.tabla-resumen .fila-sub + .fila-mov td:first-child, .tabla-resumen .fila-mov td:first-child { white-space: normal; }
+.tabla-resumen tr.fila-mov { cursor: pointer; }
+.tabla-resumen tr.fila-mov:hover td { background: var(--verde-claro); }
+.mov-fecha { font-variant-numeric: tabular-nums; margin-right: 6px; }
+.mov-prov { opacity: .8; }
+
+/* ===== Granos ===== */
+.acciones-granos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.acciones-granos .btn { flex: 1 1 140px; }
+.stock-grano .stock-total { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.lista-acopios, .lista-cobros { list-style: none; margin: 8px 0 0; padding: 0; }
+.lista-acopios li, .lista-cobros li {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 6px 0; border-top: 1px solid var(--borde); font-size: .92rem;
+}
+.lista-acopios .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.precio-ref { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 16px; margin-top: 10px; }
+.precio-ref label { font-size: .82rem; color: var(--texto-suave); display: grid; gap: 4px; }
+.precio-ref input { max-width: 150px; }
+.liquidacion.liq-cobrada { opacity: .85; }
+.liquidacion .badge { white-space: nowrap; }
+.liq-importes { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.barra { height: 6px; border-radius: 3px; background: var(--borde); overflow: hidden; }
+.barra > div { height: 100%; background: var(--verde); }
+.seccion-plegable { margin: 16px 0; }
+.seccion-plegable > summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; padding: 8px 0; }
+.lista-historial { padding: 4px 16px; }
+.fila-historial { padding: 8px 0; border-top: 1px solid var(--borde); }
+.fila-historial:first-child { border-top: 0; }
+.calculo-liq { font-size: .9rem; margin: 0 0 16px; padding: 10px 12px; box-shadow: none; }

@@ -7,10 +7,12 @@ const MONEDAS = { ARS: 'montoARS', USD: 'montoUSD' };
 
 const sumar = (lista, campo) => lista.reduce((s, m) => s + (Number(m[campo]) || 0), 0);
 const importes = (lista) => ({ ARS: sumar(lista, 'montoARS'), USD: sumar(lista, 'montoUSD') });
+const porFecha = (lista) => [...lista].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
 /**
  * Resumen de una campaña. Solo entran los movimientos con esa campaña
  * (los gastos sin campaña no entran en el margen).
+ * Cada categoría y subcategoría trae también sus `movimientos` (por fecha) para el detalle.
  */
 export function resumenCampana(campana, movimientos, categorias, subcategorias) {
   const ha = Number(campana.hectareas) || 0;
@@ -29,12 +31,18 @@ export function resumenCampana(campana, movimientos, categorias, subcategorias) 
       const deCat = gastos.filter((m) => m.categoriaId === c.id);
       if (!deCat.length) return null;
       const subs = subcategorias.filter((s) => s.categoriaId === c.id).sort(orden)
-        .map((s) => ({ id: s.id, nombre: s.nombre, total: importes(deCat.filter((m) => m.subcategoriaId === s.id)) }))
+        .map((s) => {
+          const deSub = deCat.filter((m) => m.subcategoriaId === s.id);
+          return { id: s.id, nombre: s.nombre, total: importes(deSub), movimientos: porFecha(deSub) };
+        })
         .filter((s) => s.total.ARS || s.total.USD);
       const sinSub = deCat.filter((m) => !m.subcategoriaId || !subcategorias.some((s) => s.id === m.subcategoriaId));
-      if (sinSub.length && subs.length) subs.push({ id: '', nombre: 'Sin subcategoría', total: importes(sinSub) });
+      if (sinSub.length && subs.length) subs.push({ id: '', nombre: 'Sin subcategoría', total: importes(sinSub), movimientos: porFecha(sinSub) });
       const total = importes(deCat);
-      return { id: c.id, nombre: c.nombre, total, porHa: porHa(total), subcategorias: subs.map((s) => ({ ...s, porHa: porHa(s.total) })) };
+      return {
+        id: c.id, nombre: c.nombre, total, porHa: porHa(total), movimientos: porFecha(deCat),
+        subcategorias: subs.map((s) => ({ ...s, porHa: porHa(s.total) })),
+      };
     })
     .filter(Boolean);
 
@@ -44,7 +52,7 @@ export function resumenCampana(campana, movimientos, categorias, subcategorias) 
       const deCat = ingresos.filter((m) => m.categoriaId === c.id);
       if (!deCat.length) return null;
       const qq = sumar(deCat, 'quintales');
-      return { id: c.id, nombre: c.nombre, total: importes(deCat), qq, kg: qq * KG_POR_QQ };
+      return { id: c.id, nombre: c.nombre, total: importes(deCat), qq, kg: qq * KG_POR_QQ, movimientos: porFecha(deCat) };
     })
     .filter(Boolean);
 
