@@ -6,6 +6,7 @@
  *   accion 'push' : datos = { entidad: [registros] }. Upsert por id; gana el `modificado` más reciente.
  *   accion 'pull' : datos = { desde, limite?, cursor? }. Registros con syncTs > desde, paginados si viene `limite`.
  *   accion 'log'  : datos = { entradas: [...] }. Agrega el log de errores de la app a la pestaña "Errores".
+ *   Editar una fila a mano en el Sheet actualiza su syncTs y modificado (onEdit), así llega a la app.
  *   Entidades: hermanos, categorias, subcategorias, campanas, movimientos y granos (una pestaña cada una).
  *   accion 'subirComprobante': foto/PDF a la carpeta de Drive (Script Property CARPETA_COMPROBANTES).
  *
@@ -128,6 +129,40 @@ function conLock(fn) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ---------------------------------------------------------------- Ediciones a mano en el Sheet
+
+// Disparador simple: corre cuando alguien edita una celda a mano (no cuando escribe el script).
+// La app solo trae las filas con syncTs posterior a su último sync, y entre dos versiones gana el
+// `modificado` más nuevo: si no se tocan esas dos columnas, el cambio hecho a mano nunca llega a la app.
+function onEdit(e) {
+  if (!e || !e.range) return;
+  var sheet = e.range.getSheet();
+  var entidad = null;
+  Object.keys(ENTIDADES).forEach(function (k) { if (ENTIDADES[k].hoja === sheet.getName()) entidad = k; });
+  if (!entidad) return;
+  var desde = Math.max(e.range.getRow(), 2);
+  var hasta = e.range.getLastRow();
+  if (hasta < desde) return;
+  var encabezados = encabezadosDe(sheet);
+  var colTs = encabezados.indexOf('syncTs') + 1;
+  var colMod = encabezados.indexOf('modificado') + 1;
+  var cantidad = hasta - desde + 1;
+  if (colTs > 0) {
+    sheet.getRange(desde, colTs, cantidad, 1).setValues(repetir(Date.now(), cantidad));
+  }
+  if (colMod > 0) {
+    var rango = sheet.getRange(desde, colMod, cantidad, 1);
+    rango.setNumberFormat('@');
+    rango.setValues(repetir(new Date().toISOString(), cantidad));
+  }
+}
+
+function repetir(valor, n) {
+  var filas = [];
+  for (var i = 0; i < n; i++) filas.push([valor]);
+  return filas;
 }
 
 // ---------------------------------------------------------------- Acciones

@@ -1,5 +1,9 @@
 # Changelog
 
+## Apps Script — 2026-11-19
+- `onEdit`: si se edita a mano una fila de una pestaña de datos (p. ej. pasar `borrado` a FALSE), se actualizan
+  su `syncTs` y su `modificado`, así el cambio llega a la app en el próximo sync. Antes se ignoraba.
+
 ## 0.10.0 — 2026-11-19 — Granos, estados de campaña y detalle en el resumen
 - **Granos** (`#/granos`, en "Más" en el celular): stock por campaña, grano y acopio; liquidaciones (kilos, precio
   por qq, gastos a descontar, fecha de cobro) con bruto, neto, cobrado y lo que falta; cobros que **generan el
